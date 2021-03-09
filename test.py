@@ -2,44 +2,40 @@
 Code for different testcases goes here
 '''
 import utils
-import bitfuscnn
+from bitfuscnn import CoordinateComputation, MultiplierArray
+from scipy.ndimage import convolve
 
-inputs = []    
 weights = [
-    [0, 23, 0],
+    [1, 0, 1],
     [0, 0, 0],
-    [18, 0, 42],
-]    
-activations = [
-    [1, 0, 0],
-    [0, 0, 0],
-    [0, 0, 0],
+    [1, 0, 1],
 ]
-inputs.append([weights, activations, 3, 3])
-
 activations = [
-    [0, 0, 0],
-    [0, 1, 0],
-    [0, 0, 0],
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9],
 ]
-inputs.append([weights, activations, 3, 3])
+cweights, weightindices = utils.compress(weights)
+cactivations, activationindices = utils.compress(activations)
 
-activations = [
-    [1, 0, 0, 0, 1],
-    [0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 1, 0, 0],
-]
-inputs.append([weights, activations, 3, 5])
+coordinatecompute = CoordinateComputation(weightindices[1:], activationindices[1:], 3, 3, 4, 4)
+multiplierarray = MultiplierArray(cweights, cactivations, 4, 4)
 
-for testcase in inputs:
-    weights = testcase[0]
-    activations = testcase[1]
-    weightDim = testcase[2]
-    activationDim = testcase[3]
-    weightData, weightIndices = utils.compress(weights)
-    activationData, activationIndices = utils.compress(activations)
-    print(activationIndices)
-    print(weightIndices)
-    print(bitfuscnn.computeCoordinates(weightIndices[1:], activationIndices[1:], weightDim, activationDim))
+results = {}
+cycle = 0
+outputcoordinates = coordinatecompute.getCoordinates()
+
+while (len(outputcoordinates) > 0):
+    products = multiplierarray.multiply()
+    for coordinate, product in zip(outputcoordinates, products):
+        if coordinate not in results:
+            results[coordinate] = product
+        else:
+            results[coordinate] += product
+
+    outputcoordinates = coordinatecompute.getCoordinates()
+    cycle += 1
+print('Cycles: ' + str(cycle))
+print(results)
+print(len(results))
+print(convolve(activations, weights, mode="constant", cval=0, origin=0))
