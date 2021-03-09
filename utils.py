@@ -2,6 +2,7 @@
 Software utilities go here 
 '''
 #Converts a 2D matrix into a compressed representation 
+import numpy as np
 def compress(matrix):
     dataVector = []
     indexVector = [0]
@@ -18,5 +19,19 @@ def compress(matrix):
 
     return dataVector, indexVector
 
-    
+def convolve(activations, weights):
+    a = np.array(activations)
+    w = np.array(weights)
+    a = np.pad(a, 1, mode = 'constant')
+    m, n = w.shape
+    y, x = a.shape
+    y = y - m + 1
+    x = x - m + 1
+    new_image = np.zeros((y,x))
+    for i in range(y):
+        for j in range(x):
+            new_image[i][j] = np.sum(a[i:i+m, j:j+m]*w)
+    return new_image
+
+
 
