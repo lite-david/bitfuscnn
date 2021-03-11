@@ -3,6 +3,7 @@ Methods which implement different hardware components of the accelerator go here
 '''
 
 import utils
+from ppu import bank_from_rcc, BufferAddressInfo
 
 class CoordinateComputation:
     def __init__(self, weightIndices, activationIndices, weightDim, activationDim, f, i):
@@ -70,9 +71,9 @@ class CoordinateComputation:
 
 
 class BufferBankArray:
-    # Initializes 'a' buffer banks, each with fxi entries.
-    def __init__(self, a, f, i):
-        self.buffer = [[0] * f * i] * a
+    # Initializes 'n' buffer banks, with 'width' number of entries.
+    def __init__(self, n, width):
+        self.buffer = [[0] * width] * n
 
     def get(self, bank, entry):
         return self.buffer[bank][entry]
@@ -84,15 +85,32 @@ class BufferBankArray:
         self.buffer = [[0] * len(x) for x in self.buffer]
 
 
-# Routes FxI inputs to Ax(FxI) buffer banks
+# Routes FxI inputs to n buffer banks
 class Crossbar:
-    def __init__(self, a, f, i, bufferbank):
-        self.a = a
+    def __init__(self, n, f, i, bufferbank):
+        self.n = n
         self.f = f
         self.i = i
+        self.bufferbank = bufferbank
+        self.sentcoordinates = {}
 
-    def route(self, inputs):
-        pass
+    #Returns the number of coordinates left to send to buffer bank due to conflict. 
+    #If 0, that means all coordinates are sent and next set of computation can begin.
+    def route(self, products, coordinates):
+        #In a cycle can't accumlate to same bank again. (bank conflict)
+        sentbank = {}
+        for product, coordinate in zip(products, coordinates):
+            bank = bank_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n))
+            offset = coordinate[1]
+            if bank not in sentbank and coordinates not in self.sentcoordinates:
+                self.bufferbank.accumulate(bank, offset, product)
+                sentbank[bank] = 1
+                self.sentcoordinates[coordinates] = 1
+        if len(self.sentcoordinates) == len(coordinates):
+            self.sentcoordinates = {}
+            return 0
+        else:
+            return len(self.sentcoordinates) - len(coordinates)
 
 
 class MultiplierArray:
