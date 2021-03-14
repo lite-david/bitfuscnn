@@ -56,16 +56,16 @@ class CoordinateComputation:
                 ai %= (self.activationDim * self.activationDim)
             # Increment by 1 to account for non-zero elements
             wi += 1
-            # reset weight incase straddling across different weight filters K = 1 and K = 2 for example.
+            # reset weight in case straddling across different weight filters K = 1 and K = 2 for example.
             wi %= (self.weightDim * self.weightDim)
         self.activationIndex = ai
-        self.weightIndex = wi
         self.activationPointer += self.i
         if self.weightPointer >= len(self.weightIndices):
             # Ideally we should do a weightFIFO.get() here
             pass
         if self.activationPointer >= len(self.activationIndices):
             self.weightPointer += self.f
+            self.weightIndex = wi
             self.activationPointer = 0
         return outputCoordinates
 
@@ -73,7 +73,7 @@ class CoordinateComputation:
 class BufferBankArray:
     # Initializes 'n' buffer banks, with 'width' number of entries.
     def __init__(self, n, width):
-        self.buffer = [[0] * width] * n
+        self.buffer = [[0] * width for x in range(n)]
 
     def get(self, bank, entry):
         return self.buffer[bank][entry]
@@ -87,30 +87,35 @@ class BufferBankArray:
 
 # Routes FxI inputs to n buffer banks
 class Crossbar:
-    def __init__(self, n, f, i, bufferbank):
+    def __init__(self, n, bufferbank):
         self.n = n
-        self.f = f
-        self.i = i
         self.bufferbank = bufferbank
         self.sentcoordinates = {}
 
-    #Returns the number of coordinates left to send to buffer bank due to conflict. 
-    #If 0, that means all coordinates are sent and next set of computation can begin.
-    def route(self, products, coordinates):
-        #In a cycle can't accumlate to same bank again. (bank conflict)
+    # Returns the number of coordinates left to send to buffer bank due to conflict.
+    # If 0, that means all coordinates are sent and next set of computation can begin.
+    def route(self, products, coordinates, outputdim):
+        # In a cycle can't accumulate to same bank again. (bank conflict)
         sentbank = {}
+        index = 0
         for product, coordinate in zip(products, coordinates):
             bank = bank_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n))
-            offset = coordinate[1]
-            if bank not in sentbank and coordinates not in self.sentcoordinates:
+            offset = coordinate[0]
+            if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= outputdim or coordinate[1] >= outputdim:
+                self.sentcoordinates[index] = 1
+                index += 1
+                continue
+            if bank not in sentbank and index not in self.sentcoordinates:
                 self.bufferbank.accumulate(bank, offset, product)
+                print(coordinate)
                 sentbank[bank] = 1
-                self.sentcoordinates[coordinates] = 1
+                self.sentcoordinates[index] = 1
+            index += 1
         if len(self.sentcoordinates) == len(coordinates):
             self.sentcoordinates = {}
             return 0
         else:
-            return len(self.sentcoordinates) - len(coordinates)
+            return len(coordinates) - len(self.sentcoordinates)
 
 
 class MultiplierArray:
@@ -126,7 +131,7 @@ class MultiplierArray:
 
     def multiply(self):
         output = []
-        # Loop limits are f and i so atmost there are fxi output coordinates
+        # Loop limits are f and i so at most there are fxi output coordinates
         for i in range(self.f):
             if self.weightPointer + i >= len(self.weights):
                 break
