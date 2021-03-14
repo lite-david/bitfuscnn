@@ -17,6 +17,7 @@ class Neighbor(Enum):
     BOTTOM_LEFT = 5
     BOTTOM = 6
     BOTTOM_RIGHT = 7
+    NONE = 8
 
 class PPUStates(Enum):
     IDLE = 0
@@ -27,18 +28,34 @@ class PPUState:
     def __init__(self, buffer_info):
         self.done = True
         self.neighbor_inputs = [(0, -1, -1)] * buffer_info.buffer_count
+        self.process_outputs = False
+        self.row_counter = 0
+        self.column_counter = 0
 
 
 class BufferAddressInfo:
-    def __init__(self, buffer_count):
+    def __init__(self, buffer_count, tile_size=4):
         self.buffer_count = buffer_count
+        self.tile_size = tile_size
 
 
 def bank_from_rcc(row, column, channel, buffer_address_info):
-    shift = row * 3 + channel
+    shift = row * 3
     shift = shift % buffer_address_info.buffer_count
     index = (column+shift) % buffer_address_info.buffer_count
     return int(index)
+
+def entry_from_rcc(row, column, channel, buffer_address_info):
+    return row
+
+def bank_entry_to_rcc(bank, entry, buffer_address_info):
+    row = entry
+    shift = row * 3
+    shift = shift % buffer_address_info.buffer_count
+    column = bank - shift
+    if bank < shift:
+        column = bank + buffer_address_info.buffer_count - shift
+    return (row, column, 0) # zero channel for now
 
 def has_leftover_inputs(state):
     for partial in state.neighbor_inputs:
@@ -69,8 +86,120 @@ def process_neighbor_inputs(state, neighbor_inputs, buffer_address_info):
 
     return buffer_outputs
 
+def neighbor_from_rcc(rcc, buffer_address_info, kernel_size=3):
+    tile_size = buffer_address_info.tile_size
+    halo_size = (kernel_size - 1) / 2
+    row = rcc[0]
+    column = rcc[1]
+
+    max_center = tile_size - halo_size
+
+    if row < halo_size and column < halo_size:
+        return Neighbor.TOP_LEFT
+    if row >= max_center and column >= max_center:
+        return Neighbor.BOTTOM_RIGHT
+    if row < halo_size and column >= max_center:
+        return Neighbor.TOP_RIGHT
+    if row >= max_center and column < halo_size:
+        return Neighbor.BOTTOM_LEFT
+
+    if row < halo_size:
+        return Neighbor.TOP
+    if column < halo_size:
+        return Neighbor.LEFT
+
+    if row >= max_center:
+        return Neighbor.BOTTOM
+    if column >= max_center:
+        return Neighbor.RIGHT
+
+    return Neighbor.NONE
+
+def get_neighbor_rcc(rcc, neighbor, buffer_address_info, kernel_size=3):
+    halo_size = (kernel_size-1)/2
+    row_top = buffer_address_info.tile_size - rcc[0] - 2 * halo_size
+    row_bottom = rcc[0] - buffer_address_info.tile_size + 2 * halo_size
+    column_left = buffer_address_info.tile_size - rcc[1] - 2 * halo_size
+    column_right = rcc[1] - buffer_address_info.tile_size + 2 * halo_size
+
+    if neighbor == Neighbor.TOP_LEFT:
+        row = row_top
+        column = column_left
+        return (row, column, rcc[2])
+
+    if neighbor == Neighbor.TOP:
+        row = row_top
+        column = rcc[1]
+        return (row, column, rcc[2])
+
+    if neighbor == Neighbor.TOP_RIGHT:
+        row = row_top
+        column = column_right
+        return (row, column, rcc[2])
+
+    if neighbor == Neighbor.LEFT:
+        row = rcc[0]
+        column = column_left
+        return (row, column, rcc[2])
+
+    if neighbor == Neighbor.RIGHT:
+        row = rcc[0]
+        column = column_right
+        return (row, column, rcc[2])
+
+    if neighbor == Neighbor.BOTTOM_LEFT:
+        row = row_bottom
+        column = column_left
+        return (row, column, rcc[2])
+
+    if neighbor == Neighbor.BOTTOM:
+        row = row_bottom
+        column = rcc[1]
+        return (row, column, rcc[2])
+
+    if neighbor == Neighbor.BOTTOM_RIGHT:
+        row = row_bottom
+        column = column_right
+        return (row, column, rcc[2])
+
+    return rcc
+
+def increment_row_column(state, buffer_address_info):
+    state.row_counter += 1
+    if state.row_counter >= buffer_address_info.tile_size:
+        state.row_counter = 0
+        state.column_counter += 1
+
 def output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_address_info, kernel_size=3):
     neighbor_outputs = [(0, -1, -1, -1)] * 8
+
+    if not state.process_outputs and channel_group_done:
+        state.row_counter = 0
+        state.column_counter = 0
+        state.process_outputs = True
+
+    if not state.process_outputs:
+        return neighbor_outputs
+
+    selected_output = buffers[state.column_counter][state.row_counter]
+    rcc = bank_entry_to_rcc(state.column_counter, state.row_counter, buffer_address_info)
+
+    if selected_output == 0:
+        increment_row_column(state, buffer_address_info)
+        return neighbor_outputs
+        
+    neighbor = neighbor_from_rcc(rcc, buffer_address_info, kernel_size=kernel_size)
+    if not neighbor_cts[neighbor.value]:
+        return neighbor_outputs
+
+    increment_row_column(state, buffer_address_info)
+    if neighbor == Neighbor.NONE:
+        return neighbor_outputs
+
+    rcc = get_neighbor_rcc(rcc, neighbor, buffer_address_info, kernel_size=kernel_size)
+    neighbor_outputs[neighbor.value] = (selected_output, rcc[0], rcc[1], rcc[2])
+
+
     return neighbor_outputs
 
 """
