@@ -34,9 +34,9 @@ def set_neighbor_data(ppu, neighbor_input, neighbor_cts, neighbor_exchange_done)
         ppu.neighbor_input_column[i] <= neighbor_input[i][2]
         ppu.neighbor_cts[i] <= neighbor_cts[i]
         ppu.neighbor_exchange_done[i] <= neighbor_exchange_done[i]
-        we_value = 0
+        we_value = 1
         if neighbor_input[i][1] == -1:
-            we_value = 1
+            we_value = 0
         ppu.neighbor_input_write_enable[i] <= we_value
     yield Timer(1)
 
@@ -98,6 +98,8 @@ def do_ppu(
     neighbor_exchange_done,
     neighbor_cts,
 ):
+    ppu.clk <= 0
+    yield Timer(1)
     yield set_neighbor_data(ppu, neighbor_inputs, neighbor_cts, neighbor_exchange_done)
     ppu.clk <= 1
     yield Timer(1)
@@ -169,7 +171,7 @@ def test_ppu_saves_incoming_partial_sum(dut):
     oaram = [0] * RAM_SIZE
     oaram_indices = [0] * RAM_SIZE
     back_buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
-    neighbor_input = [(3, 1, 1, 1)] + [(0, -1, -1, -1)] * 7
+    neighbor_input = [(3, 1, 1, 0)] + [(0, -1, -1, -1)] * 7
     neighbor_cts = [False] * 8
     neighbor_exchange_done = [False] * 8
     ppu_outputs = yield do_ppu(
@@ -184,5 +186,81 @@ def test_ppu_saves_incoming_partial_sum(dut):
     )
 
     expected_buffer_outputs = [(0, -1, -1, -1)] * BUFFER_COUNT
-    expected_buffer_outputs[bank_from_rcc(1, 1, 1, buffer_info)] = (3, 1, 1, 1)
+    expected_buffer_outputs[bank_from_rcc(1, 1, 0, buffer_info)] = (3, 1, 1, 0)
     tc.assertEqual(ppu_outputs.buffer_outputs, expected_buffer_outputs)
+
+@cocotb.test()
+def test_has_leftover_inputs(dut):
+    tc = unittest.TestCase()
+    ppu = dut.ppu
+    neighbor_input_processor = ppu.neighbor_input_processor
+    RAM_SIZE = 1024
+    BUFFER_COUNT = 32
+    BUFFER_WIDTH = 32
+    neighbor_input_processor.clk <= 0
+
+    yield reset_dut(neighbor_input_processor)
+
+    neighbor_input_processor.proc_neighbor_input_write_enable[0] <= 1
+    neighbor_input_processor.proc_neighbor_input_value[0] <= 2
+    neighbor_input_processor.proc_neighbor_input_row[0] <= 1
+    neighbor_input_processor.proc_neighbor_input_column[0] <= 1
+
+    yield Timer(1)
+    tc.assertTrue(neighbor_input_processor.leftover_inputs.value)
+
+    neighbor_input_processor.clk <= 1
+    yield Timer(1)
+
+    tc.assertFalse(neighbor_input_processor.leftover_inputs.value)
+
+@cocotb.test()
+def test_ppu_saves_sets_cts_false_when_conflicting_bank(dut):
+    tc = unittest.TestCase()
+    ppu = dut.ppu
+    RAM_SIZE = 1024
+    BUFFER_COUNT = 32
+    BUFFER_WIDTH = 32
+    buffer_info = BufferAddressInfo(BUFFER_COUNT)
+    yield reset_dut(ppu)
+
+    oaram = [0] * RAM_SIZE
+    oaram_indices = [0] * RAM_SIZE
+    back_buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
+    neighbor_input = [(3, 1, 1, 0), (1, 1, 1, 0)] + [(0, -1, -1, -1)] * 6
+    neighbor_cts = [False] * 8
+    neighbor_exchange_done = [False] * 8
+    ppu_output = yield do_ppu(
+        ppu,
+        False,
+        oaram,
+        oaram_indices,
+        back_buffers,
+        neighbor_input,
+        neighbor_exchange_done,
+        neighbor_cts
+    )
+    tc.assertFalse(ppu_output.cycle_done)
+    tc.assertFalse(ppu_output.clear_to_send)
+
+    expected_buffer_outputs = [(0, -1, -1, -1)] * BUFFER_COUNT
+    expected_buffer_outputs[bank_from_rcc(1, 1, 1, buffer_info)] = (3, 1, 1, 0)
+    tc.assertEqual(ppu_output.buffer_outputs, expected_buffer_outputs)
+
+    ppu_output = yield do_ppu(
+        ppu,
+        False,
+        oaram,
+        oaram_indices,
+        back_buffers,
+        neighbor_input,
+        neighbor_exchange_done,
+        neighbor_cts
+    )
+
+    tc.assertTrue(ppu_output.clear_to_send)
+
+    expected_buffer_outputs = [(0, -1, -1, -1)] * BUFFER_COUNT
+    expected_buffer_outputs[bank_from_rcc(1, 1, 1, buffer_info)] = (1, 1, 1, 0)
+    tc.assertEqual(ppu_output.buffer_outputs, expected_buffer_outputs)
+
