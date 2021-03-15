@@ -7,6 +7,7 @@ sys.path.append('../../')
 import unittest
 import utils
 import bitfuscnn
+from cocotb.handle import Force
 
 def compress(matrix):
     dataVector = []
@@ -48,7 +49,7 @@ def test_8bit_4x4_coordinate_computation(dut):
     cactivations, activationindices = utils.compress(activations)
     sw_coordinatecompute = bitfuscnn.CoordinateComputation(weightindices[1:], activationindices[1:], 3, 3, 4, 4)
     outputcoordinates = sw_coordinatecompute.getCoordinates()
-    print(outputcoordinates)
+    # print(outputcoordinates)
     
     tc = unittest.TestCase()
     clk = dut.coordinatecomputation.clk
@@ -61,19 +62,21 @@ def test_8bit_4x4_coordinate_computation(dut):
     yield reset_dut(dut)
     clk <= 0
     yield Timer(100, units="ns")
-    bitwidth <= 8
+    bitwidth <= 3
     for i in range(4):
-        weight_indices[i] <= weightindices[i+1]
+        weight_indices[i] <= Force(weightindices[i+1])
         activation_indices[i] <= activationindices[i+1]
     activation_dim <= 3
     weight_dim <= 3
+    yield Timer(1)
+    
     clk <= 1
     yield Timer(100, units="ns")
     for i in range(16):
         if outputcoordinates[i][0] == -1:
             tc.assertEqual(int(dut.coordinatecomputation.row_coordinate[i]), 65535)
         else:
-            tc.assertEqual(int(dut.coordinatecomputation.row_coordinate[i]), outputcoordinates[i][0])
+            tc.assertEqual(int(dut.coordinatecomputation.row_coordinate[i]), outputcoordinates[i][0], "i={}".format(i))
 
         if outputcoordinates[i][1] == -1:
             tc.assertEqual(int(dut.coordinatecomputation.column_coordinate[i]), 65535)
@@ -97,7 +100,7 @@ def test_4bit_8x8_coordinate_computation(dut):
     cactivations, activationindices = utils.compress(activations)
     sw_coordinatecompute = bitfuscnn.CoordinateComputation(weightindices[1:], activationindices[1:], 3, 3, 8, 8)
     outputcoordinates = sw_coordinatecompute.getCoordinates()
-    print(outputcoordinates)
+    # print(outputcoordinates)
     
     tc = unittest.TestCase()
     clk = dut.coordinatecomputation.clk
@@ -110,7 +113,7 @@ def test_4bit_8x8_coordinate_computation(dut):
     yield reset_dut(dut)
     clk <= 0
     yield Timer(100, units="ns")
-    bitwidth <= 4
+    bitwidth <= 2
     for i in range(8):
         weight_indices[i] <= weightindices[i+1]
         activation_indices[i] <= activationindices[i+1]
@@ -149,7 +152,7 @@ def test_2bit_16x16_coordinate_computation(dut):
     cactivations, activationindices = utils.compress(activations)
     sw_coordinatecompute = bitfuscnn.CoordinateComputation(weightindices[1:], activationindices[1:], 5, 5, 16, 16)
     outputcoordinates = sw_coordinatecompute.getCoordinates()
-    print(outputcoordinates)
+    # print(outputcoordinates)
     
     tc = unittest.TestCase()
     clk = dut.coordinatecomputation.clk
@@ -162,7 +165,7 @@ def test_2bit_16x16_coordinate_computation(dut):
     yield reset_dut(dut)
     clk <= 0
     yield Timer(100, units="ns")
-    bitwidth <= 2
+    bitwidth <= 1
     for i in range(16):
         weight_indices[i] <= weightindices[i+1]
         activation_indices[i] <= activationindices[i+1]

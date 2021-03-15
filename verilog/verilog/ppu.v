@@ -1,3 +1,16 @@
+import utils::*;
+
+class RCConverter;
+//   static function logic [$clog2(BANK_COUNT)-1:0] bank_from_rc(
+//     input logic[$clog2(TILE_SIZE)-1:0] row,
+//     logic[$clog2(TILE_SIZE)-1:0] column);
+//   logic [$clog2(BANK_COUNT)-1:0] shift;
+//   shift = (row * 3) % BANK_COUNT;
+//   bank_from_rc = (column + shift) % BANK_COUNT;
+
+// endfunction
+endclass
+
 module ppu
   #(parameter integer RAM_WIDTH = 10,
     parameter integer BANK_COUNT = 32,
@@ -21,8 +34,7 @@ module ppu
     output wire buffer_write_enable[BANK_COUNT],
 
     output wire [$clog2(BANK_COUNT)-1:0] buffer_bank_read,
-    output wire [$clog2(TILE_SIZE)-1:0] buffer_bank_row[BANK_COUNT],
-    output wire [$clog2(TILE_SIZE)-1:0] buffer_bank_column[BANK_COUNT],
+    output wire [$clog2(TILE_SIZE)-1:0] buffer_bank_entry,
     input wire [7:0] buffer_data_read,
 
     input wire[7:0] neighbor_input_value[8],
@@ -70,6 +82,9 @@ generate
 endgenerate
 
 assign clear_to_send = !leftover_inputs;
+
+assign buffer_bank_read = 0;
+assign buffer_bank_entry = 0;
 
 
 endmodule

@@ -3,7 +3,7 @@ module coordinatecomputation
          input wire clk,
          input wire reset_n,
          input wire[3:0] bitwidth,
-         input wire[3:0] weight_indices[16],
+         input logic[3:0] weight_indices[16],
          input wire[3:0] activation_indices[16],
          input wire[3:0] weight_dim,
          input wire[8:0] activation_dim,
@@ -11,17 +11,18 @@ module coordinatecomputation
          output logic signed [15:0] column_coordinate[256]
        );
 
+
 logic [31:0] weight_index[16], activation_index[16], weight_index_row, weight_index_column, activation_index_row, activation_index_column;
 integer i,j;
-always @(posedge clk or negedge reset_n)
+always @(posedge clk or negedge reset_n) begin
   if (!reset_n) begin
     for (i = 0; i<16; i = i + 1) begin
       weight_index[i] <= 0;
       activation_index[i] <= 0;
     end
     for (i = 0; i<256; i = i + 1) begin
-      row_coordinate[i] <= 0;
-      column_coordinate[i] <= 0;
+      row_coordinate[i] = 0;
+      column_coordinate[i] = 0;
     end
     activation_index_row = 0;
     activation_index_column = 0;
@@ -30,7 +31,7 @@ always @(posedge clk or negedge reset_n)
   end
   else begin
     case(bitwidth)
-      4'b0010:
+      2'b01:
         begin
           //Calculate weight index and activation index from compressed
           //representation
@@ -55,7 +56,7 @@ always @(posedge clk or negedge reset_n)
             end
           end
         end      
-      4'b0100: 
+      3'b010: 
         begin
           //Calculate weight index and activation index from compressed
           //representation
@@ -80,7 +81,7 @@ always @(posedge clk or negedge reset_n)
             end
           end
         end      
-      4'b1000: 
+      3'b011: 
         begin
           //Calculate weight index and activation index from compressed
           //representation
@@ -108,4 +109,5 @@ always @(posedge clk or negedge reset_n)
       default: row_coordinate[0] <= 0;
     endcase 
   end
+end
 endmodule

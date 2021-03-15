@@ -21,8 +21,7 @@ logic [7:0] buffer_data_write[BANK_COUNT];
 reg buffer_write_enable[BANK_COUNT];
 
 logic [$clog2(BANK_COUNT)-1:0] buffer_bank_read;
-logic [$clog2(TILE_SIZE)-1:0] buffer_bank_row[BANK_COUNT];
-logic [$clog2(TILE_SIZE)-1:0] buffer_bank_column[BANK_COUNT];
+logic [$clog2(TILE_SIZE)-1:0] buffer_bank_entry;
 wire [7:0] buffer_data_read;
 
 wire[7:0] neighbor_input_value[8];
@@ -41,45 +40,49 @@ logic[7:0] neighbor_output_value[8];
 logic[$clog2(TILE_SIZE)-1:0] neighbor_output_row[8];
 logic[$clog2(TILE_SIZE)-1:0] neighbor_output_column[8];
 logic neighbor_output_write_enable[8];
-ppu ppu( clk,
-         reset_n,
-         bitwidth,
-         kernel_size,
+// ppu ppu( clk,
+//          reset_n,
+//          bitwidth,
+//          kernel_size,
 
-         channel_group_done,
+//          channel_group_done,
 
-         oaram_value,
-         oaram_indices_value,
-         oaram_address,
-         oaram_write_enable,
+//          oaram_value,
+//          oaram_indices_value,
+//          oaram_address,
+//          oaram_write_enable,
 
-         buffer_row_write,
-         buffer_column_write,
-         buffer_data_write,
-         buffer_write_enable,
+//          buffer_row_write,
+//          buffer_column_write,
+//          buffer_data_write,
+//          buffer_write_enable,
 
-         buffer_bank_read,
-         buffer_bank_row,
-         buffer_bank_column,
-         buffer_data_read,
+//          buffer_bank_read,
+//          buffer_bank_entry,
+//          buffer_data_read,
 
-         neighbor_input_value,
-         neighbor_input_row,
-         neighbor_input_column,
-         neighbor_input_write_enable,
+//          neighbor_input_value,
+//          neighbor_input_row,
+//          neighbor_input_column,
+//          neighbor_input_write_enable,
 
-         neighbor_exchange_done,
-         neighbor_cts,
+//          neighbor_exchange_done,
+//          neighbor_cts,
 
-         cycle_done,
+//          cycle_done,
 
-         clear_to_send,
-         exchange_done,
-         neighbor_output_value,
-         neighbor_output_row,
-         neighbor_output_column,
-         neighbor_output_write_enable);
+//          clear_to_send,
+//          exchange_done,
+//          neighbor_output_value,
+//          neighbor_output_row,
+//          neighbor_output_column,
+//          neighbor_output_write_enable);
+ppu ppu();
 
 coordinatecomputation coordinatecomputation();
+
+always @(posedge clk) begin
+  $display("big clock");
+end
 
 endmodule
