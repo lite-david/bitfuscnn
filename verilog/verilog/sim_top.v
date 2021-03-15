@@ -80,4 +80,6 @@ ppu ppu( clk,
          neighbor_output_column,
          neighbor_output_write_enable);
 
+coordinatecomputation coordinatecomputation();
+
 endmodule

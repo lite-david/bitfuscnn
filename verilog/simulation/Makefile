@@ -1,5 +1,5 @@
 BITFUSCNN=$(PWD)/../verilog
-BITFUSCNN_SRC=$(BITFUSCNN)/top.v $(BITFUSCNN)/sim_top.v $(BITFUSCNN)/ppu.v 
+BITFUSCNN_SRC=$(BITFUSCNN)/top.v $(BITFUSCNN)/sim_top.v $(BITFUSCNN)/ppu.v $(BITFUSCNN)/coordinatecomputation.v
 BITFUSCNN_SRC+= $(BITFUSCNN)/neighbor_input_processor.v
 # GPS_SRC+= $(GPS)/FULL_ADDER.v $(GPS)/LOGGER.v $(GPS)/SAMPLER.v
 VERILOG_SOURCES = $(BITFUSCNN_SRC)
@@ -11,7 +11,7 @@ VERILOG_SOURCES = $(BITFUSCNN_SRC)
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file:
 TOPLEVEL=sim_top
 # MODULE is the name of the Python test file:
-MODULE=testBitfuscnn,testPPU
+MODULE=testBitfuscnn,testPPU,testCoordinateComputation
 
 # include ~/src/cocotb/cocotb/makefiles/Makefile.inc
 # include ~/src/cocotb/cocotb/makefiles/Makefile.sim
