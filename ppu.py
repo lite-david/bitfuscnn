@@ -318,7 +318,7 @@ This method applies one clock cycle for the PPU
 :returns: {cycle_done, buffer_outputs, neighbor_outputs, clear_to_send, exchange_done} 
           cycle_done is true if the full cycle is done
           buffer_outputs are a list of tuples with locations of where to
-          place each iin the accumulator buffers
+          place each in the accumulator buffers
           neighbor_outputs is an array of (value, r, c, c) tuples destine to each neighbor
           clear_to_send is an array of cts's for each neighbor
           exchange_done is true if the ppu has sent all data, remains true until next cycle_done
@@ -358,8 +358,6 @@ def ppu(
         buffer_address_info,
         kernel_size=kernel_size,
     )
-    # todo
-    # once all neighbors done start copying to ram
 
     ppu_output = PPUOutput()
     ppu_output.cycle_done = done
