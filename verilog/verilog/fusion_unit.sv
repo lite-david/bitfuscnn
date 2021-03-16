@@ -1,23 +1,14 @@
 module fusion_unit (
-    clk,
-    a[7:0],
-    b[7:0],
-    sa,
-    sb,
-    cfga[1:0],
-    cfgb[1:0],
-    out[63:0]
+    input clk,
+    input a[7:0],
+    input b[7:0],
+    input sa,
+    input sb,
+    input cfga[1:0],
+    input cfgb[1:0],
+
+    output reg out[63:0]
 );
-
-input clk;
-input [7:0] a;
-input [7:0] b;
-input sa;
-input sb;
-input [1:0] cfga;
-input [1:0] cfgb;
-
-output reg [63:0] out;
 
 wire [15:0] out0, out1, out2, out3;
 wire signed [15:0] out0_ext, out1_ext, out2_ext, out3_ext, out0_a_ext, out1_a_ext, out2_a_ext, out3_a_ext;
@@ -261,7 +252,7 @@ always_comb begin
             out = sum;
         end
         default: begin
-            assign out = 64'b0;
+            out = 64'b0;
         end
     endcase
 end
