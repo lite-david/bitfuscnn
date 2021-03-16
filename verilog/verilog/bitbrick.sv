@@ -18,10 +18,12 @@ output reg [3:0] out;
 wire signed [2:0] sea, seb;
 wire signed [5:0] p;
 
-assign sea = {a[1]&sa,a[1:0]}
-assign seb = {b[1]&sb,b[1:0]}
+always_comb begin
+    assign sea = {a[1]&sa,a[1:0]}
+    assign seb = {b[1]&sb,b[1:0]}
 
-assign p = sea * seb;
-assign out[3:0] = p[3:0];
+    assign p = sea * seb;
+    assign out[3:0] = p[3:0];
+end
   
 endmodule
