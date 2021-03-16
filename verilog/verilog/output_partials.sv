@@ -129,6 +129,30 @@ function advance(
 
 endfunction
 
+function logic [$clog2(TILE_SIZE)-1:0] advance_row(
+    input logic [$clog2(TILE_SIZE)-1:0] row,
+    input logic [$clog2(TILE_SIZE)-1:0] column
+  );
+  logic unsigned [$clog2(TILE_SIZE):0] next_row_big;
+  logic unsigned [$clog2(TILE_SIZE):0] next_column_big;
+  logic unsigned [$clog2(TILE_SIZE):0] actual_tile_size;
+  actual_tile_size = get_actual_tile_size(TILE_SIZE, bitwidth);
+
+  next_row_big = row + 1;
+  advance_row = next_row_big[$clog2(TILE_SIZE)-1:0];
+  if(next_row_big == actual_tile_size) begin
+    advance_row = 0;
+    next_column_big = column + 1;
+    next_column = next_column_big[$clog2(TILE_SIZE)-1:0];
+    if(next_column_big == actual_tile_size) begin
+      next_column = 0;
+      next_exchange_done = 1;
+      
+    end
+  end
+
+endfunction
+
 function Neighbor neighbor_from_rc(
     input logic unsigned [$clog2(TILE_SIZE)-1:0] row,
     input logic unsigned [$clog2(TILE_SIZE)-1:0] column
@@ -268,7 +292,7 @@ endfunction
 
 genvar k;
 generate
-  for(k = 0; k<8; k++) begin
+  for(k = 0; k<8; k++) begin : output_value_block
     assign next_neighbor_output_value[k] = buffer_data_read;
   end
 
@@ -287,6 +311,8 @@ always_comb begin
   next_column = column;
   buffer_bank_read = 0;
   buffer_bank_entry = 0;
+  next_exchange_done = exchange_done;
+  neighbor = NONE;
 
   if(!process_outputs && channel_group_done) begin
     next_process_outputs = 1;
@@ -298,17 +324,17 @@ always_comb begin
     buffer_bank_entry = entry_from_rc(row, column);
 
     if(buffer_data_read == 0) begin
-      advance(row, column);
+      next_row = advance_row(row, column);
     end
     else begin
 
       neighbor = neighbor_from_rc(row, column);
 
       if(neighbor == NONE) begin
-        advance(row, column);
+        next_row = advance_row(row, column);
       end
       else if(neighbor_cts[neighbor]) begin
-        advance(row, column);
+        next_row = advance_row(row, column);
         next_neighbor_output_row[neighbor] = get_neighbor_r(row, column, neighbor);
         next_neighbor_output_column[neighbor] = get_neighbor_c(row, column, neighbor);
         next_neighbor_output_write_enable[neighbor] = 1;
