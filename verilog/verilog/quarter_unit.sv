@@ -1,19 +1,19 @@
 module quarter_unit (
     input clk,
-    input a[3:0],
-    input b[3:0],
-    input sa[1:0],
-    input sb[1:0],
+    input [3:0] a,
+    input [3:0] b,
+    input [1:0] sa,
+    input [1:0] sb,
     input sft_ctrl_1,
     input sft_ctrl_2,
-    input sft_ctrl_3[1:0],
+    input [1:0] sft_ctrl_3,
 
-    output reg out[15:0]
+    output reg [15:0] out
 );
 
-wire [3:0] out0, out1, out2, out3;
-wire signed [7:0] out0_ext, out1_ext, out2_ext, out3_ext;
-wire signed [15:0] sum;
+logic [3:0] out0, out1, out2, out3;
+logic signed [7:0] out0_ext, out1_ext, out2_ext, out3_ext;
+logic signed [15:0] sum;
 
 bitbrick bb_0 (
     .clk(clk),

@@ -1,22 +1,22 @@
 module fusion_unit (
     input clk,
-    input a[7:0],
-    input b[7:0],
+    input [7:0] a,
+    input [7:0] b,
     input sa,
     input sb,
-    input cfga[1:0],
-    input cfgb[1:0],
+    input [1:0] cfga,
+    input [1:0] cfgb,
 
-    output reg out[63:0]
+    output reg [63:0] out
 );
 
-wire [15:0] out0, out1, out2, out3;
-wire signed [15:0] out0_ext, out1_ext, out2_ext, out3_ext, out0_a_ext, out1_a_ext, out2_a_ext, out3_a_ext;
-wire signed [63:0] sum;
-wire sa_0, sa_1, sa_2, sa_3;
-wire sb_0, sb_1, sb_2, sb_3;
-wire sft_ctrl_0_1, sft_ctrl_0_2;
-wire [1:0] sft_ctrl_0_3;
+logic [15:0] out0, out1, out2, out3;
+logic signed [15:0] out0_ext, out1_ext, out2_ext, out3_ext, out0_a_ext, out1_a_ext, out2_a_ext, out3_a_ext;
+logic signed [63:0] sum;
+logic sa_0, sa_1, sa_2, sa_3;
+logic sb_0, sb_1, sb_2, sb_3;
+logic sft_ctrl_0_1, sft_ctrl_0_2;
+logic [1:0] sft_ctrl_0_3;
 
 quarter_unit qu_0 (
     .clk(clk),
@@ -35,7 +35,7 @@ quarter_unit qu_1 (
     .a(a[7:4]),
     .b(b[3:0]),
     .sa({sa_3,sa_2}),
-    .sb({sa_1,sa_0}),
+    .sb({sb_1,sb_0}),
     .sft_ctrl_1(sft_ctrl_0_1),
     .sft_ctrl_2(sft_ctrl_0_2),
     .sft_ctrl_3(sft_ctrl_0_3[1:0]),
@@ -47,7 +47,7 @@ quarter_unit qu_2 (
     .a(a[3:0]),
     .b(b[7:4]),
     .sa({sa_1,sa_0}),
-    .sb({sa_3,sa_2}),
+    .sb({sb_3,sb_2}),
     .sft_ctrl_1(sft_ctrl_0_1),
     .sft_ctrl_2(sft_ctrl_0_2),
     .sft_ctrl_3(sft_ctrl_0_3[1:0]),
@@ -57,9 +57,9 @@ quarter_unit qu_2 (
 quarter_unit qu_3 (
     .clk(clk),
     .a(a[7:4]),
-    .b(b[3:0]),
+    .b(b[7:4]),
     .sa({sa_3,sa_2}),
-    .sb({sa_3,sa_2}),
+    .sb({sb_3,sb_2}),
     .sft_ctrl_1(sft_ctrl_0_1),
     .sft_ctrl_2(sft_ctrl_0_2),
     .sft_ctrl_3(sft_ctrl_0_3[1:0]),

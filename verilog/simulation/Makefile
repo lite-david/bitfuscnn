@@ -10,7 +10,7 @@ VERILOG_SOURCES = $(BITFUSCNN_SRC)
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file:
 TOPLEVEL=sim_top
 # MODULE is the name of the Python test file:
-MODULE=testBitfuscnn,testPPU,testCoordinateComputation
+MODULE=testBitfuscnn,testPPU,testCoordinateComputation,testFusionUnit
 
 # include ~/src/cocotb/cocotb/makefiles/Makefile.inc
 # include ~/src/cocotb/cocotb/makefiles/Makefile.sim

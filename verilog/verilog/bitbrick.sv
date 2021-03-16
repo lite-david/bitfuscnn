@@ -1,11 +1,11 @@
 module bitbrick (
     input clk,
-    input a[1:0],
-    input b[1:0],
+    input [1:0] a,
+    input [1:0] b,
     input sa,
     input sb,
 
-    output reg out[3:0]
+    output reg [3:0] out
 );
 
 logic signed [2:0] sea, seb;
@@ -18,5 +18,5 @@ always_comb begin
     p = sea * seb;
     out[3:0] = p[3:0];
 end
-  
+
 endmodule
