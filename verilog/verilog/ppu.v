@@ -40,7 +40,7 @@ module ppu
     input wire[7:0] neighbor_input_value[8],
     input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_row[8],
     input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_column[8],
-    input wire neighbor_input_write_enable[8],
+    input wire [7:0]neighbor_input_write_enable,
 
     input wire neighbor_exchange_done[8],
     input wire neighbor_cts[8],

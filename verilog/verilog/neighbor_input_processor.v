@@ -8,7 +8,7 @@ module neighbor_input_processor
          input wire[7:0] neighbor_input_value[8],
          input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_row[8],
          input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_column[8],
-         input wire neighbor_input_write_enable[8],
+         input wire [7:0]neighbor_input_write_enable,
 
          output logic [$clog2(TILE_SIZE)-1:0] buffer_row_write[BANK_COUNT],
          output logic [$clog2(TILE_SIZE)-1:0] buffer_column_write[BANK_COUNT],
@@ -122,9 +122,10 @@ always_comb begin
   end
 
   for(i = 0; i<8; i++) begin
+      $display("wire %d, r=%d, c=%d", i, select_neighbor_input_row[i], select_neighbor_input_column[i]);
     if(select_neighbor_input_write_enable[i]) begin
       bank = bank_from_rc(select_neighbor_input_row[i], select_neighbor_input_column[i]);
-      $display("wire %d uses bank %d", i, bank);
+      $display("wire %d uses bank %d, r=%d, c=%d", i, bank, select_neighbor_input_row[i], select_neighbor_input_column[i]);
       if(!used_banks[bank]) begin
         used_banks[bank] = 1;
         next_buffer_row_write[bank] = select_neighbor_input_row[i];

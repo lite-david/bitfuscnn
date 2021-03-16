@@ -29,35 +29,41 @@ def reset_dut(ppu):
 def set_bit(wire, i, val):
     old_val = wire.value
     not_mask = 1 << i
-    mask = ~not_mask
-    new_val = val << i | (mask & old_val)
+    mask = not_mask ^ 0xFFFFFF
+    masked_val = (mask & old_val)
+    new_val = (val << i) | masked_val
     wire <= new_val
+    # print(i, val)
+    # print("{},{},{},{},{}".format(bin(old_val), bin(new_val), bin(mask), bin(masked_val), bin(val << i)))
     yield Timer(1)
 
 def get_bit(wire, i):
     not_mask = 1 << i
-    mask = ~not_mask
+    mask = not_mask ^ 0xFFFFFF
     if wire.value & mask != 0:
         return 1
     return 0
 
 @cocotb.coroutine
 def set_neighbor_data(ppu, neighbor_input, neighbor_cts, neighbor_exchange_done):
+    print(ppu.__dict__)
     for i in range(len(neighbor_input)):
         ppu.neighbor_input_value[i] <= neighbor_input[i][0]
         ppu.neighbor_input_row[i] <= neighbor_input[i][1]
         ppu.neighbor_input_column[i] <= neighbor_input[i][2]
         
-        # ppu.neighbor_cts[i] <= neighbor_cts[i]
-        yield set_bit(ppu.neighbor_cts, i, neighbor_cts[i])
-        # ppu.neighbor_exchange_done[i] <= neighbor_exchange_done[i]
-        yield set_bit(ppu.neighbor_exchange_done, i, neighbor_exchange_done[i])
+        ppu.neighbor_cts[i] <= neighbor_cts[i]
+        # yield set_bit(ppu.neighbor_cts, i, neighbor_cts[i])
+        ppu.neighbor_exchange_done[i] <= neighbor_exchange_done[i]
+        # yield set_bit(ppu.neighbor_exchange_done, i, neighbor_exchange_done[i])
         we_value = 1
         if neighbor_input[i][1] == -1:
             we_value = 0
-        # ppu.neighbor_input_write_enable[i] <= we_value
-        yield set_bit(ppu.neighbor_input_write_enable, i, we_value)
+        ppu.neighbor_input_write_enable[i] <= we_value
+        # yield set_bit(ppu.neighbor_input_write_enable, i, we_value)
     yield Timer(1)
+    print(ppu.neighbor_input_row.value)
+    print(ppu.neighbor_input_processor.neighbor_input_row.value)
 
 
 @cocotb.coroutine
@@ -80,7 +86,7 @@ def get_ppu_output(ppu, bank_count):
     ppu_output.buffer_outputs = []
 
     for i in range(bank_count):
-        if get_bit(ppu.buffer_write_enable,i) == 0:
+        if ppu.buffer_write_enable[i] == 0:
             new_value = (0, -1, -1, -1)
             ppu_output.buffer_outputs.append(new_value)
             continue
@@ -95,7 +101,7 @@ def get_ppu_output(ppu, bank_count):
         val = ppu.neighbor_output_value[i].value
         row = ppu.neighbor_output_row[i].value
         column = ppu.neighbor_output_column[i].value
-        write_enable = get_bit(ppu.neighbor_output_write_enable, i)
+        write_enable = ppu.neighbor_output_write_enable[i]
         if write_enable == 0:
             new_value = (0, -1, -1, -1)
             ppu_output.neighbor_outputs.append(new_value)

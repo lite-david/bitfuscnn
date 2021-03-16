@@ -3,7 +3,7 @@ module coordinatecomputation
          input wire clk,
          input wire reset_n,
          input wire[3:0] bitwidth,
-         input logic[3:0] weight_indices[16],
+         input wire[3:0] weight_indices[16],
          input wire[3:0] activation_indices[16],
          input wire[3:0] weight_dim,
          input wire[8:0] activation_dim,

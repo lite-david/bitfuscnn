@@ -7,7 +7,6 @@ sys.path.append('../../')
 import unittest
 import utils
 import bitfuscnn
-from cocotb.handle import Force
 
 def compress(matrix):
     dataVector = []
@@ -64,7 +63,7 @@ def test_8bit_4x4_coordinate_computation(dut):
     yield Timer(100, units="ns")
     bitwidth <= 3
     for i in range(4):
-        weight_indices[i] <= Force(weightindices[i+1])
+        weight_indices[i] <= weightindices[i+1]
         activation_indices[i] <= activationindices[i+1]
     activation_dim <= 3
     weight_dim <= 3
