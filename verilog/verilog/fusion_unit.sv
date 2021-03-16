@@ -85,7 +85,7 @@ always_comb begin
             out2_ext = {out2[11:0],4'b0};
             out3_ext = {out3[7:0],8'b0};
             sum = out0_ext + out1_ext + out2_ext + out3_ext;
-            out[63:0] = (sa_3||sb_3) ? {{48{sum[15]}},sum[15:0]} : {{48'b0,sum[15:0]};
+            out[63:0] = (sa_3||sb_3) ? {{48{sum[15]}},sum[15:0]} : {48'b0,sum[15:0]};
         end
         4'b1001: begin
             sa_0 = 1'b0;
@@ -105,7 +105,7 @@ always_comb begin
             out3_ext = {out3[11:0],4'b0};
             sum[31:0] = out0_ext + out1_ext;
             sum[63:32] = out2_ext + out3_ext;
-            out[63:0] = (sa_3||sb_3) ? {{20{sum[43]}},sum[43:32],{20{sum[11]}},sum[11:0]} : {20'b0,sum[43:32],{20'b0,sum[11:0]};
+            out[63:0] = (sa_3||sb_3) ? {{20{sum[43]}},sum[43:32],{20{sum[11]}},sum[11:0]} : {20'b0,sum[43:32],20'b0,sum[11:0]};
         end
         4'b0110: begin
             sa_0 = 1'b0;
@@ -125,7 +125,7 @@ always_comb begin
             out3_ext = {out3[11:0],4'b0};
             sum[31:0] = out0_ext + out2_ext;
             sum[63:32] = out1_ext + out3_ext;
-            out[63:0] = (sa_3||sb_3) ? {{20{sum[43]}},sum[43:32],{20{sum[11]}},sum[11:0]} : {20'b0,sum[43:32],{20'b0,sum[11:0]};
+            out[63:0] = (sa_3||sb_3) ? {{20{sum[43]}},sum[43:32],{20{sum[11]}},sum[11:0]} : {20'b0,sum[43:32],20'b0,sum[11:0]};
         end
         4'b1000: begin
             sa_0 = 1'b0;

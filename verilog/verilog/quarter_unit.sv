@@ -89,6 +89,7 @@ always_comb begin
             sum[11:8] = out2_ext;
             sum[15:12] = out3_ext;
             out = sum;
+        end
         default: begin
             out = 16'b0;
         end
