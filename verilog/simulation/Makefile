@@ -1,7 +1,8 @@
 BITFUSCNN=$(PWD)/../verilog
-BITFUSCNN_SRC= $(BITFUSCNN)/bank_from_rc.v $(BITFUSCNN)/rc_from_bank.v
-BITFUSCNN_SRC+= $(BITFUSCNN)/top.v $(BITFUSCNN)/sim_top.v $(BITFUSCNN)/ppu.v $(BITFUSCNN)/coordinatecomputation.v
-BITFUSCNN_SRC+= $(BITFUSCNN)/neighbor_input_processor.v  $(BITFUSCNN)/output_partials.v 
+BITFUSCNN_SRC= $(BITFUSCNN)/bank_from_rc.sv $(BITFUSCNN)/rc_from_bank.sv
+BITFUSCNN_SRC+= $(BITFUSCNN)/top.sv $(BITFUSCNN)/sim_top.sv $(BITFUSCNN)/ppu.sv $(BITFUSCNN)/coordinatecomputation.sv
+BITFUSCNN_SRC+= $(BITFUSCNN)/neighbor_input_processor.sv  $(BITFUSCNN)/output_partials.sv 
+BITFUSCNN_SRC+= $(BITFUSCNN)/output_accumulator.sv
 # GPS_SRC+= $(GPS)/FULL_ADDER.v $(GPS)/LOGGER.v $(GPS)/SAMPLER.v
 VERILOG_SOURCES = $(BITFUSCNN_SRC)
 # VERILOG_SOURCES+= $(XILINX)/verilog/src/glbl.v
