@@ -50,24 +50,34 @@ class BufferAddressInfo:
         self.tile_size = tile_size
 
 
-def bank_from_rcc(row, column, channel, buffer_address_info):
-    shift = row * 3
+def bank_from_rcc(row, column, channel, buffer_address_info, bitwidth=0):
+    row_upper = row >> bitwidth
+    row_section = row % (1 << bitwidth)
+    small_buffcount = buffer_address_info.buffer_count >> bitwidth
+    shift = row_upper * 3
     shift = shift % buffer_address_info.buffer_count
-    index = (column + shift) % buffer_address_info.buffer_count
+    index = (column + shift + row_section * small_buffcount) % buffer_address_info.buffer_count
     return int(index)
 
 
-def entry_from_rcc(row, column, channel, buffer_address_info):
-    return row
+def entry_from_rcc(row, column, channel, buffer_address_info, bitwidth=0):
+    return row >> bitwidth
 
 
-def bank_entry_to_rcc(bank, entry, buffer_address_info):
+def bank_entry_to_rcc(bank, entry, buffer_address_info, bitwidth=0):
+    small_buffcount = buffer_address_info.buffer_count >> bitwidth
     row = entry
+    row_msb = row << bitwidth
     shift = row * 3
     shift = shift % buffer_address_info.buffer_count
-    column = bank - shift
+    column = bank-shift
     if bank < shift:
         column = bank + buffer_address_info.buffer_count - shift
+    col_div = int(math.log2(buffer_address_info.buffer_count))
+    row_lsb = column >> (col_div - bitwidth)
+    column = column % small_buffcount
+    row = row_msb | row_lsb
+    
     return (row, column, 0)  # zero channel for now
 
 

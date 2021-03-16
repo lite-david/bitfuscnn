@@ -195,6 +195,42 @@ class PPUTest(unittest.TestCase):
         rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info)
         self.assertEqual(rcc, (row, column, channel))
 
+        row = 1
+        column = 29
+        channel = 0
+        bank = ppu.bank_from_rcc(row, column, channel, buffer_info)
+        entry = ppu.entry_from_rcc(row, column, channel, buffer_info)
+        rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info)
+        self.assertEqual(rcc, (row, column, channel))
+
+        row = 7
+        column = 5
+        bank = ppu.bank_from_rcc(row, column, 0, buffer_info, 2)
+        entry = ppu.entry_from_rcc(row, column, 0, buffer_info, 2)
+        rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info, 2)
+        self.assertEqual(rcc, (row, column, 0))
+
+        buffer_info = ppu.BufferAddressInfo(32)
+        used_width = 8
+        vals = []
+        for i in range(0, 32):
+            vals.append([(0,0)] * 2)
+        for i in range(0, used_width):
+            string = ""
+            for k in range(0,used_width):
+                bank = ppu.bank_from_rcc(i, k, 0, buffer_info, 2)
+                entry = ppu.entry_from_rcc(i, k, 0, buffer_info, 2)
+                vals[bank][entry] = (i,k)
+                rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info, 2)
+                self.assertEqual(rcc[0], i)
+                self.assertEqual(rcc[1], k)
+                string += "({},{})\t".format(bank,entry)
+            # print(string)
+
+        # for row in vals:
+            # print(row)
+
+
     def test_neighbor_from_rcc(self):
         BUFFER_COUNT = 6
         buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=6)

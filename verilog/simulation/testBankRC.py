@@ -20,53 +20,20 @@ def set_rc(tc, dut, row, column, bitwidth):
     column_wire <= column
     bitwidth_wire <= bitwidth
     yield Timer(1)
-    tc.assertEqual(row, row_output.value)
-    tc.assertEqual(column, column_output.value)
+    
+    tc.assertEqual(row, row_output.value.integer)
+    tc.assertEqual(column, column_output.value.integer)
+    return dut.entry.value.integer
 
 @cocotb.test()
 def test_bank_entry_to_rcc_inverts_bank(dut):
     tc = unittest.TestCase()
-    # ppu = dut.ppu
-    # yield reset_dut(ppu)
-    BUFFER_COUNT = 32
-    # BUFFER_WIDTH = 32
-    # buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT)
+    BANK_COUNT = 32
 
-    # for bitwidth in range(0, 3):
-
-
-    yield set_rc(tc, dut, 0,0, 2)
-    yield set_rc(tc, dut, 5,0, 2)
-    yield set_rc(tc, dut, 0,3, 2)
-    yield set_rc(tc, dut, 7,20, 2)
-    # row = 0
-    # column = 0
-    # channel = 0
-    # bank = ppu_py.bank_from_rcc(row, column, channel, buffer_info)
-    # entry = ppu_py.entry_from_rcc(row, column, channel, buffer_info)
-    # rcc = ppu_py.bank_entry_to_rcc(bank, entry, buffer_info)
-    # tc.assertEqual(rcc, (row, column, channel))
-
-    # row = 5
-    # column = 0
-    # channel = 0
-    # bank = ppu_py.bank_from_rcc(row, column, channel, buffer_info)
-    # entry = ppu_py.entry_from_rcc(row, column, channel, buffer_info)
-    # rcc = ppu_py.bank_entry_to_rcc(bank, entry, buffer_info)
-    # tc.assertEqual(rcc, (row, column, channel))
-
-    # row = 0
-    # column = 3
-    # channel = 0
-    # bank = ppu_py.bank_from_rcc(row, column, channel, buffer_info)
-    # entry = ppu_py.entry_from_rcc(row, column, channel, buffer_info)
-    # rcc = ppu_py.bank_entry_to_rcc(bank, entry, buffer_info)
-    # tc.assertEqual(rcc, (row, column, channel))
-
-    # row = 7
-    # column = 20
-    # channel = 0
-    # bank = ppu_py.bank_from_rcc(row, column, channel, buffer_info)
-    # entry = ppu_py.entry_from_rcc(row, column, channel, buffer_info)
-    # rcc = ppu_py.bank_entry_to_rcc(bank, entry, buffer_info)
-    # tc.assertEqual(rcc, (row, column, channel))
+    for bitwidth in range(0, 3):
+        max_dim = BANK_COUNT >> bitwidth
+        for row in range(max_dim):
+            for col in range(max_dim):
+                entry = yield set_rc(tc, dut, row,col, bitwidth)
+                max_entry = max_dim**2 // BANK_COUNT
+                tc.assertLessEqual(entry, max_entry)
