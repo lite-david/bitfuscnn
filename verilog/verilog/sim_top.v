@@ -81,10 +81,13 @@ ppu ppu();
 
 coordinatecomputation coordinatecomputation();
 
-bank_from_rcc bank_from_rcc();
-
-always @(posedge clk) begin
-  $display("big clock");
-end
+logic [$clog2(TILE_SIZE)-1:0] row;
+logic [$clog2(TILE_SIZE)-1:0] column;
+logic [$clog2(BANK_COUNT)-1:0] bank;
+logic [$clog2(TILE_SIZE)-1:0] entry;
+logic [$clog2(TILE_SIZE)-1:0] row_output;
+logic [$clog2(TILE_SIZE)-1:0] column_output;
+bank_from_rc bank_from_rc(row, column, bitwidth, bank, entry);
+rc_from_bank rc_from_bank(bank, entry, bitwidth, row_output, column_output);
 
 endmodule
