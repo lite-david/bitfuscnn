@@ -1,0 +1,6 @@
+Bitfuscnn.qpf
+Bitfuscnn.qsf
+output_files
+db
+incremental_db
+*.bak
