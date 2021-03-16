@@ -5,8 +5,6 @@ from cocotb.clock import Clock
 @cocotb.test()
 def testBitfuscnn(dut):
     """Try accessing the design."""
-    return
-    
     # Get a reference to the "clk" signal on the top-level
     clk = dut.clk
     cocotb.fork(Clock(dut.clk, 100, units='ns').start())
@@ -25,7 +23,7 @@ def testBitfuscnn(dut):
     # # yield demoTest(dut)
     # # return
     # print("Waiting 100 clock cycles")
-    yield Timer(10, units='us')
+    # # yield Timer(10, units='us')
     # print("spi_cs = " + str(dut.spi_miso))
     # print("Copying ASM")
     # yield loadConfig(spi_sclk, spi_mosi, spi_miso, spi_cs)
