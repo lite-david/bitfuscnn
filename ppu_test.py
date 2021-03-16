@@ -962,14 +962,14 @@ class PPUTest(unittest.TestCase):
 
         self.assertTrue(ppu_output.cycle_done)
 
-        self.assertEqual(oaram[0], 53)
+        self.assertEqual(oaram[0], 57)
         self.assertEqual(oaram[1], 64)
         self.assertEqual(oaram[2], 0)
         self.assertEqual(oaram[3], 0)
 
         self.assertEqual(oaram_indices[0], 0)
-        self.assertEqual(oaram_indices[1], 16)
-        self.assertEqual(oaram_indices[2], 16)
+        self.assertEqual(oaram_indices[1], 15)
+        self.assertEqual(oaram_indices[2], 15)
 
 
 if __name__ == "__main__":

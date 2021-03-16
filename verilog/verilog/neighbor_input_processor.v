@@ -74,10 +74,16 @@ end
 
 function logic [$clog2(BANK_COUNT)-1:0] bank_from_rc(
     input logic[$clog2(TILE_SIZE)-1:0] row,
-    logic[$clog2(TILE_SIZE)-1:0] column);
+    input logic[$clog2(TILE_SIZE)-1:0] column);
   logic [$clog2(BANK_COUNT)-1:0] shift;
-  shift = (row * 3) % BANK_COUNT;
-  bank_from_rc = (column + shift) % BANK_COUNT;
+  logic [$clog2(TILE_SIZE)-1:0] row_upper;
+  logic [$clog2(TILE_SIZE)-1:0] row_section;
+  logic [$clog2(BANK_COUNT)-1:0] small_buffer_count;
+  row_upper = row >> bitwidth;
+  row_section = row % (1 << bitwidth);
+  small_buffer_count = BANK_COUNT >> bitwidth;
+  shift = (row_upper * 3) % BANK_COUNT;
+  bank_from_rc = (column + shift + row_section * small_buffer_count) % BANK_COUNT;
 
 endfunction
 

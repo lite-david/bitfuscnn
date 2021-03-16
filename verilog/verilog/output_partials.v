@@ -112,7 +112,7 @@ function advance(
   logic unsigned [$clog2(TILE_SIZE):0] next_row_big;
   logic unsigned [$clog2(TILE_SIZE):0] next_column_big;
   logic unsigned [$clog2(TILE_SIZE):0] actual_tile_size;
-  actual_tile_size = TILE_SIZE >> bitwidth;
+  actual_tile_size = get_actual_tile_size(TILE_SIZE, bitwidth);
 
   next_row_big = row + 1;
   next_row = next_row_big[$clog2(TILE_SIZE)-1:0];
@@ -120,10 +120,10 @@ function advance(
     next_row = 0;
     next_column_big = column + 1;
     next_column = next_column_big[$clog2(TILE_SIZE)-1:0];
-
     if(next_column_big == actual_tile_size) begin
       next_column = 0;
       next_exchange_done = 1;
+      
     end
   end
 
@@ -136,7 +136,7 @@ function Neighbor neighbor_from_rc(
   logic unsigned [3:0] halo_size;
   logic unsigned [$clog2(TILE_SIZE)-1:0] max_center;
   logic unsigned [$clog2(TILE_SIZE):0] actual_tile_size;
-  actual_tile_size = TILE_SIZE >> bitwidth;
+  actual_tile_size = get_actual_tile_size(TILE_SIZE, bitwidth);
 
   halo_size = (kernel_size - 1)/2;
   max_center = actual_tile_size - halo_size;
@@ -174,7 +174,7 @@ function logic [$clog2(TILE_SIZE)-1:0] get_neighbor_r(
   logic unsigned [$clog2(TILE_SIZE)-1:0] column_left;
   logic unsigned [$clog2(TILE_SIZE)-1:0] column_right;
   logic unsigned [$clog2(TILE_SIZE):0] actual_tile_size;
-  actual_tile_size = TILE_SIZE >> bitwidth;
+  actual_tile_size = get_actual_tile_size(TILE_SIZE, bitwidth);
 
   halo_size = (kernel_size - 1)/2;
   row_top = actual_tile_size - row - 2 * halo_size;
@@ -208,6 +208,18 @@ function logic [$clog2(TILE_SIZE)-1:0] get_neighbor_r(
     get_neighbor_r = row_bottom;
 endfunction
 
+function logic[$clog2(TILE_SIZE):0] get_actual_tile_size(
+  input logic unsigned [$clog2(TILE_SIZE):0] tile_size,
+  input logic unsigned [1:0] bitwidth
+);
+case (bitwidth)
+  0: get_actual_tile_size = tile_size;
+  1: get_actual_tile_size = tile_size >> 1;
+  2: get_actual_tile_size = tile_size >> 3; 
+  default: get_actual_tile_size = tile_size;
+endcase
+endfunction
+
 function logic [$clog2(TILE_SIZE)-1:0] get_neighbor_c(
     input logic [$clog2(TILE_SIZE)-1:0] row,
     input logic [$clog2(TILE_SIZE)-1:0] column,
@@ -219,7 +231,7 @@ function logic [$clog2(TILE_SIZE)-1:0] get_neighbor_c(
   logic unsigned [$clog2(TILE_SIZE)-1:0] column_left;
   logic unsigned [$clog2(TILE_SIZE)-1:0] column_right;
   logic unsigned [$clog2(TILE_SIZE):0] actual_tile_size;
-  actual_tile_size = TILE_SIZE >> bitwidth;
+  actual_tile_size = get_actual_tile_size(TILE_SIZE, bitwidth);
 
   halo_size = (kernel_size - 1)/2;
   row_top = actual_tile_size - row - 2 * halo_size;
@@ -272,7 +284,7 @@ always_comb begin
 
   next_process_outputs = process_outputs;
   next_row = 0;
-  next_column = 0;
+  next_column = column;
   buffer_bank_read = 0;
   buffer_bank_entry = 0;
 

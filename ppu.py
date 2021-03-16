@@ -263,10 +263,9 @@ def save_value_sparse(state, oaram, oaram_indices, value, max_zero=16):
         return
 
     state.length += 1
-    oaram[state.index_counter + 1] = value
-    oaram_indices[state.index_counter] = state.zero_counter
+    oaram[state.length] = value
+    oaram_indices[state.length-1] = state.zero_counter
     state.zero_counter = 0
-    state.index_counter += 1
 
 
 def output_accumulator(
@@ -277,7 +276,7 @@ def output_accumulator(
     neighbor_exchange_done,
     buffer_address_info,
     kernel_size=3,
-    max_zero=16,
+    max_zero=15,
 ):
     all_done = True
     for value in neighbor_exchange_done:
