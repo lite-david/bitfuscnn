@@ -185,6 +185,42 @@ class PPUTest(unittest.TestCase):
         rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info)
         self.assertEqual(rcc, (row, column, channel))
 
+        row = 1
+        column = 29
+        channel = 0
+        bank = ppu.bank_from_rcc(row, column, channel, buffer_info)
+        entry = ppu.entry_from_rcc(row, column, channel, buffer_info)
+        rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info)
+        self.assertEqual(rcc, (row, column, channel))
+
+        row = 7
+        column = 5
+        bank = ppu.bank_from_rcc(row, column, 0, buffer_info, 2)
+        entry = ppu.entry_from_rcc(row, column, 0, buffer_info, 2)
+        rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info, 2)
+        self.assertEqual(rcc, (row, column, 0))
+
+        buffer_info = ppu.BufferAddressInfo(32)
+        used_width = 8
+        vals = []
+        for i in range(0, 32):
+            vals.append([(0,0)] * 2)
+        for i in range(0, used_width):
+            string = ""
+            for k in range(0,used_width):
+                bank = ppu.bank_from_rcc(i, k, 0, buffer_info, 2)
+                entry = ppu.entry_from_rcc(i, k, 0, buffer_info, 2)
+                vals[bank][entry] = (i,k)
+                rcc = ppu.bank_entry_to_rcc(bank, entry, buffer_info, 2)
+                self.assertEqual(rcc[0], i)
+                self.assertEqual(rcc[1], k)
+                string += "({},{})\t".format(bank,entry)
+            # print(string)
+
+        # for row in vals:
+            # print(row)
+
+
     def test_neighbor_from_rcc(self):
         BUFFER_COUNT = 6
         buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=6)
@@ -340,6 +376,531 @@ class PPUTest(unittest.TestCase):
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
         expected_neighbor_outputs[ppu.Neighbor.TOP_LEFT.value] = (5, 30, 30, 0)
         self.assertEqual(neighbor_outputs, expected_neighbor_outputs)
+
+    def test_after_at_most_ram_size_cycles_transmit_done(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+
+        state = ppu.PPUState(buffer_info)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_input = [(0, -1, -1, -1)] * 8
+        channel_group_done = True
+        neighbor_cts = [True] * 8
+        neighbor_exchange_done = [False] * 8
+        buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
+        buffers[0][0] = 5  # 0,0 is outside for kernel size > 1
+
+        ppu_output = None
+        for i in range(RAM_SIZE):
+            ppu_output = ppu.ppu(
+                state,
+                channel_group_done,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_input,
+                neighbor_exchange_done,
+                neighbor_cts,
+                buffer_address_info=buffer_info,
+            )
+
+        self.assertTrue(ppu_output.exchange_done)
+
+    def test_exchange_not_done_after_one_cycle(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+
+        state = ppu.PPUState(buffer_info)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_input = [(0, -1, -1, -1)] * 8
+        channel_group_done = True
+        neighbor_cts = [True] * 8
+        neighbor_exchange_done = [False] * 8
+        buffers = []
+        for i in range(BUFFER_COUNT):
+            buffers.append([0] * BUFFER_WIDTH)
+
+        bank = ppu.bank_from_rcc(0, 1, 0, buffer_info)
+        entry = ppu.entry_from_rcc(0, 1, 0, buffer_info)
+        buffers[bank][entry] = 10
+
+        bank = ppu.bank_from_rcc(0, 2, 0, buffer_info)
+        entry = ppu.entry_from_rcc(0, 2, 0, buffer_info)
+        buffers[bank][entry] = 10
+
+        ppu_output = ppu.ppu(
+            state,
+            channel_group_done,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_input,
+            neighbor_exchange_done,
+            neighbor_cts,
+            buffer_address_info=buffer_info,
+        )
+
+        self.assertFalse(ppu_output.exchange_done)
+
+        for i in range(RAM_SIZE):
+            ppu_output = ppu.ppu(
+                state,
+                channel_group_done,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_input,
+                neighbor_exchange_done,
+                neighbor_cts,
+                buffer_address_info=buffer_info,
+            )
+
+        self.assertTrue(ppu_output.exchange_done)
+
+    def test_accumulator_buffers_stored_sparsely(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_exchange_done = [True] * 8
+
+        state = ppu.PPUState(buffer_info)
+        buffers = []
+        for i in range(BUFFER_COUNT):
+            buffers.append([0] * BUFFER_WIDTH)
+
+        bank = ppu.bank_from_rcc(1, 1, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 1, 0, buffer_info)
+        buffers[bank][entry] = 10
+
+        bank = ppu.bank_from_rcc(1, 2, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 2, 0, buffer_info)
+        buffers[bank][entry] = 15
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=15,
+        )
+
+        self.assertFalse(done)
+
+        for i in range(RAM_SIZE - 1):
+            done = ppu.output_accumulator(
+                state,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_exchange_done,
+                buffer_info,
+                max_zero=15,
+            )
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=15,
+        )
+
+        self.assertTrue(done)
+
+        self.assertEqual(oaram[0], 58)
+        self.assertEqual(oaram[1], 10)
+        self.assertEqual(oaram[2], 15)
+
+        self.assertEqual(oaram_indices[0], 0)
+        self.assertEqual(oaram_indices[1], 0)
+
+    def test_accumulator_buffers_wait_for_exchange_done(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_exchange_done = [False] * 8
+
+        state = ppu.PPUState(buffer_info)
+        buffers = []
+        for i in range(BUFFER_COUNT):
+            buffers.append([0] * BUFFER_WIDTH)
+
+        bank = ppu.bank_from_rcc(1, 1, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 1, 0, buffer_info)
+        buffers[bank][entry] = 10
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=15,
+        )
+
+        self.assertFalse(done)
+
+        for i in range(RAM_SIZE - 1):
+            done = ppu.output_accumulator(
+                state,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_exchange_done,
+                buffer_info,
+                max_zero=15,
+            )
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=15,
+        )
+
+        self.assertFalse(done)
+
+    def test_accumulator_buffers_relu_applied(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_exchange_done = [True] * 8
+
+        state = ppu.PPUState(buffer_info)
+        buffers = []
+        for i in range(BUFFER_COUNT):
+            buffers.append([0] * BUFFER_WIDTH)
+
+        bank = ppu.bank_from_rcc(1, 1, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 1, 0, buffer_info)
+        buffers[bank][entry] = -10
+
+        bank = ppu.bank_from_rcc(1, 2, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 2, 0, buffer_info)
+        buffers[bank][entry] = 15
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=15,
+        )
+
+        self.assertFalse(done)
+
+        for i in range(RAM_SIZE - 1):
+            done = ppu.output_accumulator(
+                state,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_exchange_done,
+                buffer_info,
+                max_zero=15,
+            )
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=15,
+        )
+
+        self.assertTrue(done)
+
+        self.assertEqual(oaram[0], 57)
+        self.assertEqual(oaram[1], 15)
+
+        self.assertEqual(oaram_indices[0], 1)
+
+    def test_max_zero_count_respected(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_exchange_done = [True] * 8
+
+        state = ppu.PPUState(buffer_info)
+        buffers = []
+        for i in range(BUFFER_COUNT):
+            buffers.append([0] * BUFFER_WIDTH)
+
+        bank = ppu.bank_from_rcc(1, 1, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 1, 0, buffer_info)
+        buffers[bank][entry] = -10
+
+        bank = ppu.bank_from_rcc(1, 2, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 2, 0, buffer_info)
+        buffers[bank][entry] = 15
+
+        bank = ppu.bank_from_rcc(1, 7, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 7, 0, buffer_info)
+        buffers[bank][entry] = 2
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=3,
+        )
+
+        self.assertFalse(done)
+
+        for i in range(RAM_SIZE - 1):
+            done = ppu.output_accumulator(
+                state,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_exchange_done,
+                buffer_info,
+                max_zero=3,
+            )
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=3,
+        )
+
+        self.assertTrue(done)
+
+        self.assertEqual(oaram[0], 226)
+        self.assertEqual(oaram[1], 15)
+        self.assertEqual(oaram[2], 0)
+        self.assertEqual(oaram[3], 2)
+
+        self.assertEqual(oaram_indices[0], 1)
+        self.assertEqual(oaram_indices[1], 3)
+        self.assertEqual(oaram_indices[2], 0)
+
+    def test_all_zero_outputs(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_exchange_done = [True] * 8
+
+        state = ppu.PPUState(buffer_info)
+        buffers = []
+        for i in range(BUFFER_COUNT):
+            buffers.append([0] * BUFFER_WIDTH)
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=3,
+        )
+
+        self.assertFalse(done)
+
+        for i in range(RAM_SIZE - 1):
+            done = ppu.output_accumulator(
+                state,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_exchange_done,
+                buffer_info,
+                max_zero=3,
+            )
+
+        done = ppu.output_accumulator(
+            state,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_exchange_done,
+            buffer_info,
+            max_zero=3,
+        )
+
+        self.assertTrue(done)
+
+        self.assertEqual(oaram[0], 225)
+        self.assertEqual(oaram[1], 0)
+        self.assertEqual(oaram[2], 0)
+        self.assertEqual(oaram[3], 0)
+
+        self.assertEqual(oaram_indices[0], 3)
+        self.assertEqual(oaram_indices[1], 3)
+        self.assertEqual(oaram_indices[2], 3)
+
+    def update_buffer(self, buffers, buffer_outputs, buffer_info):
+        for i in range(len(buffer_outputs)):
+            elem = buffer_outputs[i]
+            if elem[1] == -1:
+                continue
+            entry = ppu.entry_from_rcc(elem[1], elem[2], elem[3], buffer_info)
+            buffers[i][entry] += elem[0]
+
+    def test_full_unit(self):
+        RAM_SIZE = 1024
+        BUFFER_COUNT = 32
+        BUFFER_WIDTH = 32
+        buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
+
+        state = ppu.PPUState(buffer_info)
+        oaram = [0] * RAM_SIZE
+        oaram_indices = [0] * RAM_SIZE
+        neighbor_input = [(0, -1, -1, -1)] * 8
+        channel_group_done = True
+        neighbor_cts = [True] * 8
+        neighbor_exchange_done = [False] * 8
+        buffers = []
+        for i in range(BUFFER_COUNT):
+            buffers.append([0] * BUFFER_WIDTH)
+
+        bank = ppu.bank_from_rcc(0, 1, 0, buffer_info)
+        entry = ppu.entry_from_rcc(0, 1, 0, buffer_info)
+        buffers[bank][entry] = 10
+
+        bank = ppu.bank_from_rcc(0, 2, 0, buffer_info)
+        entry = ppu.entry_from_rcc(0, 2, 0, buffer_info)
+        buffers[bank][entry] = 10
+
+        bank = ppu.bank_from_rcc(1, 1, 0, buffer_info)
+        entry = ppu.entry_from_rcc(1, 1, 0, buffer_info)
+        buffers[bank][entry] = 53
+
+        ppu_output = ppu.ppu(
+            state,
+            channel_group_done,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_input,
+            neighbor_exchange_done,
+            neighbor_cts,
+            buffer_address_info=buffer_info,
+        )
+
+        self.assertFalse(ppu_output.exchange_done)
+
+        self.update_buffer(buffers, ppu_output.buffer_outputs, buffer_info)
+
+        channel_group_done = False
+
+        for i in range(RAM_SIZE):
+            ppu_output = ppu.ppu(
+                state,
+                channel_group_done,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_input,
+                neighbor_exchange_done,
+                neighbor_cts,
+                buffer_address_info=buffer_info,
+            )
+            self.update_buffer(buffers, ppu_output.buffer_outputs, buffer_info)
+
+        self.assertTrue(ppu_output.exchange_done)
+
+        neighbor_exchange_done = [True] * 8
+
+        neighbor_input[ppu.Neighbor.LEFT.value] = (5, 1, 1, 0)
+        neighbor_input[ppu.Neighbor.TOP_LEFT.value] = (6, 1, 1, 0)
+        ppu_output = ppu.ppu(
+            state,
+            channel_group_done,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_input,
+            neighbor_exchange_done,
+            neighbor_cts,
+            buffer_address_info=buffer_info,
+        )
+        self.assertFalse(ppu_output.clear_to_send)
+        self.update_buffer(buffers, ppu_output.buffer_outputs, buffer_info)
+
+        neighbor_input = [(0, -1, -1, -1)] * 8
+
+        ppu_output = ppu.ppu(
+            state,
+            channel_group_done,
+            oaram,
+            oaram_indices,
+            buffers,
+            neighbor_input,
+            neighbor_exchange_done,
+            neighbor_cts,
+            buffer_address_info=buffer_info,
+        )
+        # verify that we are done processing, actual value is don't care
+        self.assertTrue(ppu_output.clear_to_send)
+
+        self.assertFalse(ppu_output.cycle_done)
+        self.update_buffer(buffers, ppu_output.buffer_outputs, buffer_info)
+
+        for i in range(RAM_SIZE):
+            ppu_output = ppu.ppu(
+                state,
+                channel_group_done,
+                oaram,
+                oaram_indices,
+                buffers,
+                neighbor_input,
+                neighbor_exchange_done,
+                neighbor_cts,
+                buffer_address_info=buffer_info,
+            )
+
+        self.assertTrue(ppu_output.cycle_done)
+
+        self.assertEqual(oaram[0], 57)
+        self.assertEqual(oaram[1], 64)
+        self.assertEqual(oaram[2], 0)
+        self.assertEqual(oaram[3], 0)
+
+        self.assertEqual(oaram_indices[0], 0)
+        self.assertEqual(oaram_indices[1], 15)
+        self.assertEqual(oaram_indices[2], 15)
 
 
 if __name__ == "__main__":
