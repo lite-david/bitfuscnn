@@ -46,7 +46,6 @@ def get_bit(wire, i):
 
 @cocotb.coroutine
 def set_neighbor_data(ppu, neighbor_input, neighbor_cts, neighbor_exchange_done):
-    print(ppu.__dict__)
     for i in range(len(neighbor_input)):
         ppu.neighbor_input_value[i] <= neighbor_input[i][0]
         ppu.neighbor_input_row[i] <= neighbor_input[i][1]
@@ -62,8 +61,6 @@ def set_neighbor_data(ppu, neighbor_input, neighbor_cts, neighbor_exchange_done)
         ppu.neighbor_input_write_enable[i] <= we_value
         # yield set_bit(ppu.neighbor_input_write_enable, i, we_value)
     yield Timer(1)
-    print(ppu.neighbor_input_row.value)
-    print(ppu.neighbor_input_processor.neighbor_input_row.value)
 
 
 @cocotb.coroutine

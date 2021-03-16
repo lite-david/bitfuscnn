@@ -1,5 +1,3 @@
-import utils::*;
-
 module neighbor_input_processor
        #(parameter integer BANK_COUNT = 32,
          parameter integer TILE_SIZE = 256)(
@@ -66,7 +64,6 @@ task process_neighbors();
 endtask
 
 always @(posedge clk or negedge reset_n) begin
-  $display("clocked! reset_n=%d", reset_n);
   if(!reset_n) begin
     reset();
   end
@@ -93,8 +90,6 @@ logic [BANK_COUNT-1:0]used_banks;
 logic [$clog2(BANK_COUNT)-1:0] bank;
 
 always_comb begin
-  $display("in comb");
-  $display("%b wes", neighbor_input_write_enable);
   next_neighbor_input_write_enable = proc_neighbor_input_write_enable;
   used_banks = 0;
   bank = 0;
@@ -111,9 +106,7 @@ always_comb begin
     select_neighbor_input_row[i] = neighbor_input_row[i];
     select_neighbor_input_column[i] = neighbor_input_column[i];
     select_neighbor_input_write_enable[i] = neighbor_input_write_enable[i];
-    $display("checking leftovers");
     if(leftover_inputs) begin
-      $display("selecting leftovers");
       select_neighbor_input_value[i] = proc_neighbor_input_value[i];
       select_neighbor_input_row[i] = proc_neighbor_input_row[i];
       select_neighbor_input_column[i] = proc_neighbor_input_column[i];
@@ -122,10 +115,8 @@ always_comb begin
   end
 
   for(i = 0; i<8; i++) begin
-      $display("wire %d, r=%d, c=%d", i, select_neighbor_input_row[i], select_neighbor_input_column[i]);
     if(select_neighbor_input_write_enable[i]) begin
       bank = bank_from_rc(select_neighbor_input_row[i], select_neighbor_input_column[i]);
-      $display("wire %d uses bank %d, r=%d, c=%d", i, bank, select_neighbor_input_row[i], select_neighbor_input_column[i]);
       if(!used_banks[bank]) begin
         used_banks[bank] = 1;
         next_buffer_row_write[bank] = select_neighbor_input_row[i];

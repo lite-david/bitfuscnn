@@ -1,16 +1,3 @@
-import utils::*;
-
-class RCConverter;
-//   static function logic [$clog2(BANK_COUNT)-1:0] bank_from_rc(
-//     input logic[$clog2(TILE_SIZE)-1:0] row,
-//     logic[$clog2(TILE_SIZE)-1:0] column);
-//   logic [$clog2(BANK_COUNT)-1:0] shift;
-//   shift = (row * 3) % BANK_COUNT;
-//   bank_from_rc = (column + shift) % BANK_COUNT;
-
-// endfunction
-endclass
-
 module ppu
   #(parameter integer RAM_WIDTH = 10,
     parameter integer BANK_COUNT = 32,

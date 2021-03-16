@@ -81,6 +81,8 @@ ppu ppu();
 
 coordinatecomputation coordinatecomputation();
 
+bank_from_rcc bank_from_rcc();
+
 always @(posedge clk) begin
   $display("big clock");
 end
