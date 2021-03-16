@@ -1,6 +1,6 @@
 module sim_top #(parameter integer RAM_WIDTH = 10,
                  parameter integer BANK_COUNT = 32,
-                 parameter integer TILE_SIZE = 256,
+                 parameter integer TILE_SIZE = 128,
                  parameter integer INDEX_WIDTH = 4)( input wire clk
                                                    );
 

@@ -215,10 +215,10 @@ def output_partials(
     if not state.process_outputs:
         return neighbor_outputs
 
-    selected_output = buffers[state.column_counter][state.row_counter]
-    rcc = bank_entry_to_rcc(
-        state.column_counter, state.row_counter, buffer_address_info
-    )
+    rcc = (state.row_counter, state.column_counter, 0)
+    bank = bank_from_rcc(rcc[0], rcc[1], 0, buffer_address_info)
+    entry = entry_from_rcc(rcc[0], rcc[1], 0, buffer_address_info)
+    selected_output = buffers[bank][entry]
 
     if selected_output == 0:
         increment_row_column(state, buffer_address_info)

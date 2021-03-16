@@ -1,7 +1,7 @@
 module ppu
   #(parameter integer RAM_WIDTH = 10,
     parameter integer BANK_COUNT = 32,
-    parameter integer TILE_SIZE = 256,
+    parameter integer TILE_SIZE = 128,
     parameter integer INDEX_WIDTH = 4)(
     input wire clk,
     input wire reset_n,
@@ -32,14 +32,14 @@ module ppu
     input wire neighbor_exchange_done[8],
     input wire neighbor_cts[8],
 
-    output logic cycle_done,
+    output wire cycle_done,
 
-    output logic clear_to_send,
-    output logic exchange_done,
-    output logic[7:0] neighbor_output_value[8],
-    output logic[$clog2(TILE_SIZE)-1:0] neighbor_output_row[8],
-    output logic[$clog2(TILE_SIZE)-1:0] neighbor_output_column[8],
-    output logic neighbor_output_write_enable[8]
+    output wire clear_to_send,
+    output wire exchange_done,
+    output wire[7:0] neighbor_output_value[8],
+    output wire[$clog2(TILE_SIZE)-1:0] neighbor_output_row[8],
+    output wire[$clog2(TILE_SIZE)-1:0] neighbor_output_column[8],
+    output wire neighbor_output_write_enable[8]
 
   );
 
@@ -58,20 +58,24 @@ neighbor_input_processor neighbor_input_processor(clk,
                          buffer_write_enable,
                          leftover_inputs);
 
+output_partials output_partials(clk,
+                                reset_n,
+                                bitwidth,
+                                kernel_size,
+                                channel_group_done,
+                                neighbor_cts,
+                                buffer_bank_read,
+                                buffer_bank_entry,
+                                buffer_data_read,
+
+                                exchange_done,
+                                neighbor_output_value,
+                                neighbor_output_row,
+                                neighbor_output_column,
+                                neighbor_output_write_enable);
+
 assign oaram_address = 0;
-genvar i;
-generate
-
-  for(i = 0; i<8; i++) begin
-    assign neighbor_output_write_enable[i] = 0;
-  end
-
-endgenerate
 
 assign clear_to_send = !leftover_inputs;
-
-assign buffer_bank_read = 0;
-assign buffer_bank_entry = 0;
-
 
 endmodule

@@ -1,6 +1,6 @@
 module neighbor_input_processor
        #(parameter integer BANK_COUNT = 32,
-         parameter integer TILE_SIZE = 256)(
+         parameter integer TILE_SIZE = 128)(
          input clk, reset_n,
          input wire[1:0] bitwidth,
          input wire[7:0] neighbor_input_value[8],
