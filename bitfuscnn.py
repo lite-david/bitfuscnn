@@ -33,6 +33,8 @@ class CoordinateComputation:
             if self.weightPointer + i >= len(self.weightIndices):
                 break
             wi += self.weightIndices[self.weightPointer + i]
+            # reset weight in case straddling across different weight filters K = 1 and K = 2 for example.
+            wi %= (self.weightDim * self.weightDim)
             ai = self.activationIndex
             for j in range(self.i):
                 if self.activationPointer + j >= len(self.activationIndices):
@@ -56,8 +58,6 @@ class CoordinateComputation:
                 ai %= (self.activationDim * self.activationDim)
             # Increment by 1 to account for non-zero elements
             wi += 1
-            # reset weight incase straddling across different weight filters K = 1 and K = 2 for example.
-            wi %= (self.weightDim * self.weightDim)
         self.activationIndex = ai
         self.weightIndex = wi
         self.activationPointer += self.i
