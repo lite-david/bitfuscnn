@@ -37,7 +37,7 @@ assign back_buffer_data_read = back_buffer_data_read_many[back_buffer_bank_read]
 genvar bank_index;
 generate
 
-  for(bank_index = 0; bank_index < BANK_COUNT; bank_index ++) begin
+  for(bank_index = 0; bank_index < BANK_COUNT; bank_index ++) begin : accumulator_banks
     accumulator_bank bank(
                        clk,
                        reset_n,

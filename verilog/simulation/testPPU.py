@@ -4,7 +4,7 @@ from cocotb.clock import Clock
 import unittest
 from enum import Enum
 
-LONGTEST=True
+LONGTEST=False
 
 
 class PPUOutput:
