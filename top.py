@@ -296,7 +296,7 @@ def do_experiment(bitwidth, parallel, sparsity):
 print("density, stage 1, stage 2, stage 3, total, conv 1, conv 2, ppu 1, ppu 2")
 BITWIDTH = 0
 PARALLEL = 16
-SPARSITY = 0.3
+SPARSITY = 0.7
 do_experiment(BITWIDTH, PARALLEL, SPARSITY)
 
 BITWIDTH = 1
