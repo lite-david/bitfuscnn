@@ -20,7 +20,7 @@ def test_8bit_signed(dut):
     #dut.fusion_unit.qu_0.sft_ctrl_1 = 1
     #dut.fusion_unit.qu_0.sft_ctrl_2 = 1
     #dut.fusion_unit.qu_0.sft_ctrl_3 = 2
-    dut.fusion_unit.clk = 0
+    # dut.fusion_unit.clk = 0
     dut.fusion_unit.a = a
     dut.fusion_unit.b = b
     dut.fusion_unit.sa = 0
@@ -78,7 +78,7 @@ def test_8bit_unsigned(dut):
     a = 200
     b = 100
     c = a*b
-    dut.fusion_unit.clk = 0
+    # dut.fusion_unit.clk = 0
     dut.fusion_unit.a = a
     dut.fusion_unit.b = b
     dut.fusion_unit.sa = 0

@@ -51,8 +51,8 @@ always @(posedge clk or negedge reset_n) begin
               weight_index_column = weight_index[i] % weight_dim;
               activation_index_row = activation_index[j] / activation_dim;
               activation_index_column = activation_index[j] % activation_dim;
-              row_coordinate[i*16 + j] <= (weight_dim >> 1) - weight_index_row + activation_index_row;
-              column_coordinate[i*16 + j] <= (weight_dim >> 1) - weight_index_column + activation_index_column;
+              row_coordinate[i*16 + j] <= (weight_dim >> 1) - weight_index_row + activation_index_row + 1;
+              column_coordinate[i*16 + j] <= (weight_dim >> 1) - weight_index_column + activation_index_column + 1;
             end
           end
         end      
@@ -76,8 +76,8 @@ always @(posedge clk or negedge reset_n) begin
               weight_index_column = weight_index[i] % weight_dim;
               activation_index_row = activation_index[j] / activation_dim;
               activation_index_column = activation_index[j] % activation_dim;
-              row_coordinate[i*8 + j] <= (weight_dim >> 1) - weight_index_row + activation_index_row;
-              column_coordinate[i*8 + j] <= (weight_dim >> 1) - weight_index_column + activation_index_column;
+              row_coordinate[i*8 + j] <= (weight_dim >> 1) - weight_index_row + activation_index_row + 1;
+              column_coordinate[i*8 + j] <= (weight_dim >> 1) - weight_index_column + activation_index_column + 1;
             end
           end
         end      
@@ -101,8 +101,8 @@ always @(posedge clk or negedge reset_n) begin
               weight_index_column = weight_index[i] % weight_dim;
               activation_index_row = activation_index[j] / activation_dim;
               activation_index_column = activation_index[j] % activation_dim;
-              row_coordinate[i*4 + j] <= (weight_dim >> 1) - weight_index_row + activation_index_row;
-              column_coordinate[i*4 + j] <= (weight_dim >> 1) - weight_index_column + activation_index_column;
+              row_coordinate[i*4 + j] <= (weight_dim >> 1) - weight_index_row + activation_index_row + 1;
+              column_coordinate[i*4 + j] <= (weight_dim >> 1) - weight_index_column + activation_index_column + 1;
             end
           end
         end      
