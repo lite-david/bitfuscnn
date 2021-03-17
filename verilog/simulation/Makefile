@@ -5,6 +5,7 @@ BITFUSCNN_SRC+= $(BITFUSCNN)/neighbor_input_processor.sv  $(BITFUSCNN)/output_pa
 BITFUSCNN_SRC+= $(BITFUSCNN)/output_accumulator.sv $(BITFUSCNN)/accumulator_buffer.sv
 BITFUSCNN_SRC+= $(BITFUSCNN)/accumulator_bank.sv $(BITFUSCNN)/accumulator_banks.sv
 BITFUSCNN_SRC+= $(BITFUSCNN)/fusion_unit.sv $(BITFUSCNN)/bitbrick.sv $(BITFUSCNN)/quarter_unit.sv
+BITFUSCNN_SRC+= $(BITFUSCNN)/crossbar.sv
 # GPS_SRC+= $(GPS)/FULL_ADDER.v $(GPS)/LOGGER.v $(GPS)/SAMPLER.v
 VERILOG_SOURCES = $(BITFUSCNN_SRC)
 # VERILOG_SOURCES+= $(XILINX)/verilog/src/glbl.v
@@ -16,7 +17,7 @@ VERILOG_SOURCES = $(BITFUSCNN_SRC)
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file:
 TOPLEVEL=sim_top
 # MODULE is the name of the Python test file:
-MODULE=testCoordinateComputation,testBankRC,testAccumulatorBuffer,testAccumulatorBank,testAccumulatorBanks,testPPU,testFusionUnit
+MODULE=testCoordinateComputation,testBankRC,testAccumulatorBuffer,testAccumulatorBank,testAccumulatorBanks,testPPU,testFusionUnit,testCrossbar
 # MODULE=testAccumulatorBanks
 
 # SIM=verilator

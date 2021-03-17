@@ -2,7 +2,7 @@ module coordinatecomputation
         (
          input wire clk,
          input wire reset_n,
-         input wire[3:0] bitwidth,
+         input wire[1:0] bitwidth,
          input wire[3:0] weight_indices[16],
          input wire[3:0] activation_indices[16],
          input wire[3:0] weight_dim,
@@ -31,7 +31,7 @@ always @(posedge clk or negedge reset_n) begin
   end
   else begin
     case(bitwidth)
-      2'b01:
+      2'b00:
         begin
           //Calculate weight index and activation index from compressed
           //representation
@@ -56,7 +56,7 @@ always @(posedge clk or negedge reset_n) begin
             end
           end
         end      
-      3'b010: 
+      2'b01: 
         begin
           //Calculate weight index and activation index from compressed
           //representation
@@ -81,7 +81,7 @@ always @(posedge clk or negedge reset_n) begin
             end
           end
         end      
-      3'b011: 
+      2'b10: 
         begin
           //Calculate weight index and activation index from compressed
           //representation
