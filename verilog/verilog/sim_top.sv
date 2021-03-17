@@ -91,5 +91,6 @@ bank_from_rc bank_from_rc(row, column, bitwidth, bank, entry);
 rc_from_bank rc_from_bank(bank, entry, bitwidth, row_output, column_output);
 
 accumulator_buffer accumulator_buffer();
+crossbar crossbar();
 
 endmodule
