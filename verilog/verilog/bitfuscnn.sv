@@ -24,8 +24,8 @@ module bitfuscnn
     input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_column[8],
     input wire [7:0]neighbor_input_write_enable,
 
-    input weight_done,
-    input activation_done,
+    output weight_done,
+    output activation_done,
 
     input wire [7:0]neighbor_exchange_done,
     input wire neighbor_cts[8],
@@ -37,9 +37,9 @@ module bitfuscnn
     output wire[7:0] neighbor_output_value[8],
     output wire[$clog2(TILE_SIZE)-1:0] neighbor_output_row[8],
     output wire[$clog2(TILE_SIZE)-1:0] neighbor_output_column[8],
-    output wire neighbor_output_write_enable[8]
+    output wire neighbor_output_write_enable[8],
 
-    output wire ppu_done;
+    output wire ppu_done
 );
 
 logic [7:0] weight_fifo[4], activation_fifo[4], mult_weight_pipe_in[4], mult_activation_pipe_in[4];
@@ -66,7 +66,7 @@ logic back_buffer_write_enable[256];
 
 logic [$clog2(256)-1:0] back_buffer_bank_read;
 logic [$clog2(256)-1:0] back_buffer_bank_entry;
-logic [7:0] back_buffer_data_read;
+logic [15:0] back_buffer_data_read;
 
 logic [4:0] weight_counter;
 logic [7:0] activation_counter;
@@ -75,73 +75,73 @@ integer i;
 
 task reset();
     for(i = 0; i<4; i++) begin
-        weight_fifo[i] <= 0;
-        activation_fifo[i] <= 0;
-        weight_index_fifo[i] <= 0;
-        activation_index_fifo[i] <= 0;
-        mult_weight_pipe_in[i] <= 0;
-        mult_activation_pipe_in[i] <= 0;
-        weight_index_pipe_in[i] <= 0;
-        activation_index_pipe_in[i] <= 0;
+        // weight_fifo[i] <= 0;
+        // activation_fifo[i] <= 0;
+        // weight_index_fifo[i] <= 0;
+        // activation_index_fifo[i] <= 0;
+        // mult_weight_pipe_in[i] <= 0;
+        // mult_activation_pipe_in[i] <= 0;
+        // weight_index_pipe_in[i] <= 0;
+        // activation_index_pipe_in[i] <= 0;
     end
-    count <= 0;
-    ram_read_done <= 0;
-    transfer_1 <= 0;
-    weight_counter <= 0;
-    activation_counter <= 0;
+    // count <= 0;
+    // ram_read_done <= 0;
+    // transfer_1 <= 0;
+    
+    // activation_counter <= 0;
     for(i = 0; i<16; i++) begin
-        mult_pipe_out_0[i] <= 0;
-        mult_pipe_out_1[i] <= 0;
+        // mult_pipe_out_0[i] <= 0;
+        // mult_pipe_out_1[i] <= 0;
     end
     for(i = 0; i<256; i++) begin
-        row_coordinate_pipe_out[i] <= 0;
-        column_coordinate_pipe_out[i] <= 0;
-        front_buffer_row_write[i] <= 0;
-        front_buffer_column_write[i] <= 0;
-        front_buffer_data_write[i] <= 0;
-        front_buffer_row_write_pipe[i] <= 0;
-        front_buffer_column_write_pipe[i] <= 0;
-        front_buffer_data_write_pipe[i] <= 0;
-        front_buffer_write_enable[i] <= 0;
-        front_buffer_write_enable_pipe[i] <= 0;
+        // row_coordinate_pipe_out[i] <= 0;
+        // column_coordinate_pipe_out[i] <= 0;
+        // front_buffer_row_write[i] <= 0;
+        // front_buffer_column_write[i] <= 0;
+        // front_buffer_data_write[i] <= 0;
+        // front_buffer_row_write_pipe[i] <= 0;
+        // front_buffer_column_write_pipe[i] <= 0;
+        // front_buffer_data_write_pipe[i] <= 0;
+        // front_buffer_write_enable[i] <= 0;
+        // front_buffer_write_enable_pipe[i] <= 0;
     end
 endtask
 
-task fifo_reset_weight();
-    for(i = 0; i<4; i++) begin
-        weight_fifo[i] <= 0;
-        weight_index_fifo[i] <= 0;
-    end
-    count <= 0;
-    ram_read_done <= 0;
-    weight_counter <= 0;
-endtask
+// task fifo_reset_weight();
+//     for(i = 0; i<4; i++) begin
+//         weight_fifo[i] <= 0;
+//         weight_index_fifo[i] <= 0;
+//     end
+//     count <= 0;
+//     ram_read_done <= 0;
+//     weight_counter <= 0;
+// endtask
 
-task fifo_reset_activation();
-    for(i = 0; i<4; i++) begin
-        activation_fifo[i] <= 0;
-        activation_index_fifo[i] <= 0;
-    end
-    activation_counter <= 0;
-endtask
+// task fifo_reset_activation();
+//     for(i = 0; i<4; i++) begin
+//         activation_fifo[i] <= 0;
+//         activation_index_fifo[i] <= 0;
+//     end
+//     activation_counter <= 0;
+// endtask
 
-task weight_advance();
-    for(i=0;i<3;i++) begin
-        weight_fifo[i+1] <= weight_fifo[i];
-        weight_index_fifo[i+1] <= weight_index_fifo[i];
-    end
-    weight_fifo[0] <= ram_data[7:0];
-    weight_index_fifo[0] <= ram_data[23:8];
-endtask
+// task weight_advance();
+//     for(i=0;i<3;i++) begin
+//         weight_fifo[i+1] <= weight_fifo[i];
+//         weight_index_fifo[i+1] <= weight_index_fifo[i];
+//     end
+//     weight_fifo[0] <= ram_data[7:0];
+//     weight_index_fifo[0] <= ram_data[23:8];
+// endtask
 
-task activation_advance();
-    for(i=0;i<3;i++) begin
-        activation_fifo[i+1] <= activation_fifo[i];
-        activation_index_fifo[i+1] <= activation_index_fifo[i];
-    end
-    activation_fifo[0] <= ram_data[31:24];
-    activation_index_fifo[0] <= ram_data[47:31];
-endtask
+// task activation_advance();
+//     for(i=0;i<3;i++) begin
+//         activation_fifo[i+1] <= activation_fifo[i];
+//         activation_index_fifo[i+1] <= activation_index_fifo[i];
+//     end
+//     activation_fifo[0] <= ram_data[31:24];
+//     activation_index_fifo[0] <= ram_data[47:31];
+// endtask
 
 task mult_crdnt_inpipe_reset();
     for(i = 0; i<4; i++) begin
@@ -163,21 +163,42 @@ task mult_crdnt_outpipe_reset();
     end
 endtask
 
-always_ff@(posegde clk or negedge reset_n) begin
-    if(!reset_n) begin
-        reset();
-    end else begin
-        weight_counter <= weight_counter + 1;
-    end
+// always_ff@(posedge clk or negedge reset_n) begin
+//     if(!reset_n) begin
+//         // reset();
+        
+//     end else begin
+//         weight_counter <= weight_counter + 1;
+//     end
+// end
 
-always_ff@(posegde clk or negedge reset_n) begin //read weight from ram
+always_ff@(posedge clk or negedge reset_n) begin //read weight from ram
     if(!reset_n) begin
-        reset();
+        // reset();
+        for(i = 0; i<4; i++) begin
+            weight_fifo[i] <= 0;
+            weight_index_fifo[i] <= 0;
+        end
+        weight_counter <= 0;
+        count <= 0;
+        ram_read_done <= 0;
+        weight_counter <= 0;
     end else begin
-        if(cxb_stall || weight_done) begin
-            fifo_reset_weight();
+        if(cxb_stall) begin
+            for(i = 0; i<4; i++) begin
+                weight_fifo[i] <= 0;
+                weight_index_fifo[i] <= 0;
+            end
+            count <= 0;
+            ram_read_done <= 0;
+            weight_counter <= 0;
         end else if(count < 4) begin
-            weight_advance();
+            for(i=0;i<3;i++) begin
+                weight_fifo[i+1] <= weight_fifo[i];
+                weight_index_fifo[i+1] <= weight_index_fifo[i];
+            end
+            weight_fifo[0] <= ram_data[7:0];
+            weight_index_fifo[0] <= ram_data[23:8];
             count <= count + 1;
             ram_read_done <= 0;
         end else begin
@@ -195,14 +216,27 @@ end
 assign weight_done = (weight_counter >= weight_count) ? 1 : 0;
 assign activation_done = (activation_counter >= activation_count) ? 1 : 0;
 
-always_ff@(posegde clk or negedge reset_n) begin //read input from ram
+always_ff@(posedge clk or negedge reset_n) begin //read input from ram
     if(!reset_n) begin
-        reset();
+        for(i = 0; i<4; i++) begin
+            activation_fifo[i] <= 0;
+            activation_index_fifo[i] <= 0;
+        end
+        activation_counter <= 0;
     end else begin
         if(weight_done) begin
-            fifo_reset_activation();
+            for(i = 0; i<4; i++) begin
+                activation_fifo[i] <= 0;
+                activation_index_fifo[i] <= 0;
+            end
+            activation_counter <= 0;
         end else if(count < 4) begin
-            activation_advance();
+            for(i=0;i<3;i++) begin
+                activation_fifo[i+1] <= activation_fifo[i];
+                activation_index_fifo[i+1] <= activation_index_fifo[i];
+            end
+            activation_fifo[0] <= ram_data[31:24];
+            activation_index_fifo[0] <= ram_data[47:31];
         end else begin
             for(i=0;i<4;i++) begin
                 activation_fifo[i] <= activation_fifo[i];
@@ -213,15 +247,23 @@ always_ff@(posegde clk or negedge reset_n) begin //read input from ram
     end
 end
 
-always_ff@(posegde clk or negedge reset_n) begin //multiplier and coordinate computation input pipeline
+always_ff@(posedge clk or negedge reset_n) begin //multiplier and coordinate computation input pipeline
     if(!reset_n) begin
-        reset();
+        // reset();
+        for(i = 0; i<4; i++) begin
+            mult_weight_pipe_in[i] <= 0;
+            mult_activation_pipe_in[i] <= 0;
+            weight_index_pipe_in[i] <= 0;
+            activation_index_pipe_in[i] <= 0;
+        end
     end else begin
         if(!ram_read_done || cxb_stall) begin
-            mult_weight_pipe_in[i] <= mult_weight_pipe_in[i];
-            mult_activation_pipe_in[i] <= mult_activation_pipe_in[i];
-            weight_index_pipe_in[i] <= weight_index_pipe_in[i];
-            activation_index_pipe_in[i] <= activation_index_pipe_in[i];
+            for(i=0;i<4;i++) begin
+                mult_weight_pipe_in[i] <= mult_weight_pipe_in[i];
+                mult_activation_pipe_in[i] <= mult_activation_pipe_in[i];
+                weight_index_pipe_in[i] <= weight_index_pipe_in[i];
+                activation_index_pipe_in[i] <= activation_index_pipe_in[i];
+            end
         end else begin
             for(i=0;i<4;i++) begin
                 mult_weight_pipe_in[i] <= weight_fifo[i];
@@ -247,7 +289,7 @@ generate
             .out(mult_wire_out[x])
         );
     end
-end
+endgenerate
 
 always_comb begin
     for(i=0;i<4;i++) begin
@@ -274,9 +316,12 @@ coordinatecomputation cc_0 ( //coordinate computation unit
     .column_coordinate(column_coordinate)
 );
 
-always_ff@(posegde clk or negedge reset_n) begin //multiplier output pipeline 0
-    if(!reset) begin
-        reset();
+always_ff@(posedge clk or negedge reset_n) begin //multiplier output pipeline 0
+    if(!reset_n) begin
+        // reset();
+        for(i = 0; i<16; i++) begin
+            mult_pipe_out_0[i] <= 0;
+        end
     end else begin
         for(i=0;i<16;i++) begin
             mult_pipe_out_0[i] <= mult_wire_out[i];
@@ -284,9 +329,17 @@ always_ff@(posegde clk or negedge reset_n) begin //multiplier output pipeline 0
     end
 end
 
-always_ff@(posegde clk or negedge reset_n) begin //multiplier output pipeline 1 and coordinate computation pipeline 0
-    if(!reset) begin
-        reset();
+always_ff@(posedge clk or negedge reset_n) begin //multiplier output pipeline 1 and coordinate computation pipeline 0
+    if(!reset_n) begin
+        // reset();
+        for(i = 0; i<16; i++) begin
+            // mult_pipe_out_0[i] <= 0;
+            mult_pipe_out_1[i] <= 0;
+        end
+        for(i = 0; i<256; i++) begin
+            row_coordinate_pipe_out[i] <= 0;
+            column_coordinate_pipe_out[i] <= 0;
+        end
     end else begin
         if(cxb_stall) begin
             for(i=0;i<16;i++) begin
@@ -308,27 +361,33 @@ always_ff@(posegde clk or negedge reset_n) begin //multiplier output pipeline 1 
     end
 end
 
-crossbar cxb (
-    .clk(clk),
-    .reset_n(reset_n),
-    .bitwidth(mul_cfg),
-    //Input from multiplier array
-    .products(mult_pipe_out_1),
-    //Inputs from coordinate computation
-    .row_coordinate(row_coordinate_pipe_out),
-    .column_coordinate(column_coordinate_pipe_out),
-    //Buffer bank interface
-    .buffer_row_write(front_buffer_row_write),
-    .buffer_column_write(front_buffer_column_write),
-    .buffer_data_write(front_buffer_data_write),
-    .buffer_write_enable(front_buffer_write_enable),
-    //cross bar stall signal
-    .crossbar_stall(cxb_stall)
-);
+ crossbar cxb (
+     .clk(clk),
+     .reset_n(reset_n),
+     .bitwidth(mul_cfg),
+     //Input from multiplier array
+     .products(mult_pipe_out_1),
+     //Inputs from coordinate computation
+     .row_coordinate(row_coordinate_pipe_out),
+     .column_coordinate(column_coordinate_pipe_out),
+     //Buffer bank interface
+     .buffer_row_write(front_buffer_row_write),
+     .buffer_column_write(front_buffer_column_write),
+     .buffer_data_write(front_buffer_data_write),
+     .buffer_write_enable(front_buffer_write_enable),
+     //cross bar stall signal
+     .crossbar_stall(cxb_stall)
+ );
 
-always_ff@(posegde clk or negedge reset_n) begin //crossbar output pipeline
-    if(!reset) begin
-        reset();
+always_ff@(posedge clk or negedge reset_n) begin //crossbar output pipeline
+    if(!reset_n) begin
+        // reset();
+        for(i = 0; i<256; i++) begin
+            front_buffer_row_write_pipe[i] <= 0;
+            front_buffer_column_write_pipe[i] <= 0;
+            front_buffer_data_write_pipe[i] <= 0;
+            front_buffer_write_enable_pipe[i] <= 0;
+        end
     end else begin
         if(!cxb_stall) begin
             for(i=0;i<16;i++) begin
@@ -348,6 +407,9 @@ always_ff@(posegde clk or negedge reset_n) begin //crossbar output pipeline
     end
 end
 
+wire [4*4-1:0] front_buffer_data_read;
+wire [$clog2(256)-1:0] zero;
+
 accumulator_banks acc_bank (
     .clk(clk),
     .reset_n(reset_n),
@@ -361,17 +423,20 @@ accumulator_banks acc_bank (
     .back_buffer_column_write(back_buffer_column_write),
     .back_buffer_data_write(back_buffer_data_write),
     .back_buffer_write_enable(back_buffer_write_enable),
-    .front_buffer_bank_entry(0),
-    .front_buffer_bank_read(0),
-    .front_buffer_data_read(),
+    .front_buffer_bank_entry(zero),
+    .front_buffer_bank_read(zero),
+    .front_buffer_data_read(front_buffer_data_read),
     .back_buffer_bank_entry(back_buffer_bank_entry),
     .back_buffer_bank_read(back_buffer_bank_read),
     .back_buffer_data_read(back_buffer_data_read)
 );
 
+defparam acc_bank.BUFFER_WIDTH = 256;
+
 always_ff@(posedge clk or negedge reset_n) begin
     if(!reset_n) begin
-        reset();
+        // reset();
+        transfer_1 <= 0;
     end else begin
         transfer_1 <= transfer;
     end
@@ -381,7 +446,7 @@ ppu ppu (
     .clk(clk),
     .reset_n(reset_n),
     .bitwidth(mul_cfg),
-    .kernel_size(weight_dim),
+    .kernel_size(weight_dim[2:0]),
     .channel_group_done(transfer_1),
     .oaram_value(oaram_value),
     .oaram_indices_value(oaram_indices_value),
@@ -393,7 +458,7 @@ ppu ppu (
     .buffer_write_enable(back_buffer_write_enable),
     .buffer_bank_read(back_buffer_bank_entry),
     .buffer_bank_entry(back_buffer_bank_read),
-    .buffer_data_read(back_buffer_data_read),
+    .buffer_data_read(back_buffer_data_read[7:0]),
     .neighbor_input_value(neighbor_input_value),
     .neighbor_input_row(neighbor_input_row),
     .neighbor_input_column(neighbor_input_column),

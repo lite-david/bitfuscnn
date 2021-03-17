@@ -70,6 +70,7 @@ always_comb begin
   for(i = 0; i<BANK_COUNT; i++) begin
     next_buffer_write_enable[i] = 0;
   end // end for
+  bank = 0;
   case(bitwidth)
   2'b10:
     begin

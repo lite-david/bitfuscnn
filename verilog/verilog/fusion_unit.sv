@@ -62,6 +62,28 @@ quarter_unit qu_3 (
 );
 
 always_comb begin
+    sa_0 = 1'b0;
+    sa_1 = 1'b0;
+    sa_2 = 1'b0;
+    sa_3 = sa;
+    sb_0 = 1'b0;
+    sb_1 = 1'b0;
+    sb_2 = 1'b0;
+    sb_3 = sb;
+    sft_ctrl_0_1 = 1'b1;
+    sft_ctrl_0_2 = 1'b1;
+    sft_ctrl_0_3 = 2'b10;
+    out0_ext = out0[15:0];
+    out1_ext = {out1[11:0],4'b0};
+    out2_ext = {out2[11:0],4'b0};
+    out3_ext = {out3[7:0],8'b0};
+    out0_a_ext = 0;
+    out1_a_ext = 0;
+    out2_a_ext = 0;
+    out3_a_ext = 0;
+    sum = out0_ext + out1_ext + out2_ext + out3_ext;
+    out[63:0] = (sa_3||sb_3) ? {{48{sum[15]}},sum[15:0]} : {48'b0,sum[15:0]};
+    
     case ({cfga[1:0],cfgb[1:0]})
         4'b1010: begin
             sa_0 = 1'b0;

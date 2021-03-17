@@ -47,6 +47,12 @@ bitbrick bb_3 (
 );
 
 always_comb begin
+    out0_ext = (sa[0]||sb[0]) ? {{4{out0[3]}},out0[3:0]} : {4'b0,out0[3:0]};
+    out1_ext = (sa[1]||sb[0]) ? {{2{out1[3]}},out1[3:0],2'b00} : {2'b00,out1[3:0],2'b00};
+    out2_ext = (sa[0]||sb[1]) ? {{2{out2[3]}},out2[3:0],2'b00} : {2'b00,out2[3:0],2'b00};
+    out3_ext = (sa[1]||sb[1]) ? {out3[3:0],4'b0} : {out3[3:0],4'b0};
+    sum = out0_ext + out1_ext + out2_ext + out3_ext;
+    out[15:0] = (sa[1]||sb[1]) ? {{8{sum[7]}},sum[7:0]} : {8'b0,sum[7:0]};
     case ({sft_ctrl_3[1:0],sft_ctrl_2,sft_ctrl_1})
         4'b1011: begin
             out0_ext = (sa[0]||sb[0]) ? {{4{out0[3]}},out0[3:0]} : {4'b0,out0[3:0]};
