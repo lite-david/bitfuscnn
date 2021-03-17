@@ -1,5 +1,4 @@
 module quarter_unit (
-    input clk,
     input [3:0] a,
     input [3:0] b,
     input [1:0] sa,
@@ -16,7 +15,6 @@ logic signed [7:0] out0_ext, out1_ext, out2_ext, out3_ext;
 logic signed [15:0] sum;
 
 bitbrick bb_0 (
-    .clk(clk),
     .a(a[1:0]),
     .b(b[1:0]),
     .sa(sa[0]),
@@ -25,7 +23,6 @@ bitbrick bb_0 (
 );
 
 bitbrick bb_1 (
-    .clk(clk),
     .a(a[3:2]),
     .b(b[1:0]),
     .sa(sa[1]),
@@ -34,7 +31,6 @@ bitbrick bb_1 (
 );
 
 bitbrick bb_2 (
-    .clk(clk),
     .a(a[1:0]),
     .b(b[3:2]),
     .sa(sa[0]),
@@ -43,7 +39,6 @@ bitbrick bb_2 (
 );
 
 bitbrick bb_3 (
-    .clk(clk),
     .a(a[3:2]),
     .b(b[3:2]),
     .sa(sa[1]),

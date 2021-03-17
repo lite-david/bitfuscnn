@@ -1,5 +1,4 @@
 module fusion_unit (
-    input clk,
     input [7:0] a,
     input [7:0] b,
     input sa,
@@ -19,7 +18,6 @@ logic sft_ctrl_0_1, sft_ctrl_0_2;
 logic [1:0] sft_ctrl_0_3;
 
 quarter_unit qu_0 (
-    .clk(clk),
     .a(a[3:0]),
     .b(b[3:0]),
     .sa({sa_1,sa_0}),
@@ -31,7 +29,6 @@ quarter_unit qu_0 (
 );
 
 quarter_unit qu_1 (
-    .clk(clk),
     .a(a[7:4]),
     .b(b[3:0]),
     .sa({sa_3,sa_2}),
@@ -43,7 +40,6 @@ quarter_unit qu_1 (
 );
 
 quarter_unit qu_2 (
-    .clk(clk),
     .a(a[3:0]),
     .b(b[7:4]),
     .sa({sa_1,sa_0}),
@@ -55,7 +51,6 @@ quarter_unit qu_2 (
 );
 
 quarter_unit qu_3 (
-    .clk(clk),
     .a(a[7:4]),
     .b(b[7:4]),
     .sa({sa_3,sa_2}),

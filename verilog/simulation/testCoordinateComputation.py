@@ -61,7 +61,11 @@ def test_8bit_4x4_coordinate_computation(dut):
     yield reset_dut(dut)
     clk <= 0
     yield Timer(100, units="ns")
+<<<<<<< HEAD
     bitwidth <= 3
+=======
+    bitwidth <= 2
+>>>>>>> 48c9b1b8018413bddc3a5f5cf174dda62bfab13f
     for i in range(4):
         weight_indices[i] <= weightindices[i+1]
         activation_indices[i] <= activationindices[i+1]
@@ -112,7 +116,11 @@ def test_4bit_8x8_coordinate_computation(dut):
     yield reset_dut(dut)
     clk <= 0
     yield Timer(100, units="ns")
+<<<<<<< HEAD
     bitwidth <= 2
+=======
+    bitwidth <= 1
+>>>>>>> 48c9b1b8018413bddc3a5f5cf174dda62bfab13f
     for i in range(8):
         weight_indices[i] <= weightindices[i+1]
         activation_indices[i] <= activationindices[i+1]
@@ -164,7 +172,7 @@ def test_2bit_16x16_coordinate_computation(dut):
     yield reset_dut(dut)
     clk <= 0
     yield Timer(100, units="ns")
-    bitwidth <= 1
+    bitwidth <= 0
     for i in range(16):
         weight_indices[i] <= weightindices[i+1]
         activation_indices[i] <= activationindices[i+1]
