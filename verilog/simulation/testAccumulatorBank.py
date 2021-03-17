@@ -5,12 +5,10 @@ import unittest
 from enum import Enum
 import math
 
-
 class BufferAddressInfo:
     def __init__(tc, buffer_count, tile_size=4):
         tc.buffer_count = buffer_count
         tc.tile_size = tile_size
-
 
 @cocotb.coroutine
 def reset_dut(dut):
@@ -99,7 +97,6 @@ def bank_from_rcc(row, column, channel, buffer_address_info, bitwidth=0):
 
 def entry_from_rcc(row, column, channel, buffer_address_info, bitwidth=0):
     return row >> bitwidth
-
 
 def bank_entry_to_rc(bank, entry, buffer_address_info, bitwidth=0):
     small_buffcount = buffer_address_info.buffer_count >> bitwidth

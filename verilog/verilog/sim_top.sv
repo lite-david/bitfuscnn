@@ -98,4 +98,6 @@ accumulator_banks accumulator_banks();
 
 defparam accumulator_banks.BANK_COUNT = 10;
 
+fusion_unit fusion_unit();
+
 endmodule
