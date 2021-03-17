@@ -107,7 +107,7 @@ class Crossbar:
                 continue
             if bank not in sentbank and index not in self.sentcoordinates:
                 self.bufferbank.accumulate(bank, offset, product)
-                print(coordinate)
+                # print(coordinate)
                 sentbank[bank] = 1
                 self.sentcoordinates[index] = 1
             index += 1

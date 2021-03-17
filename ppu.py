@@ -56,7 +56,9 @@ def bank_from_rcc(row, column, channel, buffer_address_info, bitwidth=0):
     small_buffcount = buffer_address_info.buffer_count >> bitwidth
     shift = row_upper * 3
     shift = shift % buffer_address_info.buffer_count
-    index = (column + shift + row_section * small_buffcount) % buffer_address_info.buffer_count
+    index = (
+        column + shift + row_section * small_buffcount
+    ) % buffer_address_info.buffer_count
     return int(index)
 
 
@@ -70,14 +72,14 @@ def bank_entry_to_rcc(bank, entry, buffer_address_info, bitwidth=0):
     row_msb = row << bitwidth
     shift = row * 3
     shift = shift % buffer_address_info.buffer_count
-    column = bank-shift
+    column = bank - shift
     if bank < shift:
         column = bank + buffer_address_info.buffer_count - shift
     col_div = int(math.log2(buffer_address_info.buffer_count))
     row_lsb = column >> (col_div - bitwidth)
     column = column % small_buffcount
     row = row_msb | row_lsb
-    
+
     return (row, column, 0)  # zero channel for now
 
 
@@ -187,8 +189,18 @@ def get_neighbor_rcc(rcc, neighbor, buffer_address_info, kernel_size=3):
     return rcc
 
 
-def increment_row_column(state, buffer_address_info):
+def increment_row_column(state, buffer_address_info, kernel_size):
     state.row_counter += 1
+    halo_size = (kernel_size - 1) // 2
+    halo_end = buffer_address_info.tile_size - halo_size - 1
+    inside_halo = state.row_counter >= halo_size and state.row_counter < halo_end
+    inside_halo = (
+        inside_halo
+        and state.column_counter >= halo_size
+        and state.column_counter < halo_end
+    )
+    if inside_halo:
+        state.row_counter = halo_end
     if state.row_counter >= buffer_address_info.tile_size:
         state.row_counter = 0
         state.column_counter += 1
@@ -221,19 +233,19 @@ def output_partials(
     selected_output = buffers[bank][entry]
 
     if selected_output == 0:
-        increment_row_column(state, buffer_address_info)
+        increment_row_column(state, buffer_address_info, kernel_size)
         return neighbor_outputs
 
     neighbor = neighbor_from_rcc(rcc, buffer_address_info, kernel_size=kernel_size)
 
     if neighbor == Neighbor.NONE:
-        increment_row_column(state, buffer_address_info)
+        increment_row_column(state, buffer_address_info, kernel_size)
         return neighbor_outputs
 
     if not neighbor_cts[neighbor.value]:
         return neighbor_outputs
 
-    increment_row_column(state, buffer_address_info)
+    increment_row_column(state, buffer_address_info, kernel_size)
 
     rcc = get_neighbor_rcc(rcc, neighbor, buffer_address_info, kernel_size=kernel_size)
     neighbor_outputs[neighbor.value] = (selected_output, rcc[0], rcc[1], rcc[2])
@@ -264,7 +276,7 @@ def save_value_sparse(state, oaram, oaram_indices, value, max_zero=16):
 
     state.length += 1
     oaram[state.length] = value
-    oaram_indices[state.length-1] = state.zero_counter
+    oaram_indices[state.length - 1] = state.zero_counter
     state.zero_counter = 0
 
 
@@ -307,6 +319,28 @@ def output_accumulator(
         save_value_sparse(state, oaram, oaram_indices, value, max_zero=max_zero)
 
     increment_column_row(state, buffer_address_info)
+
+    for i in range(3):
+        if value == 0 and state.row_counter < buffer_address_info.tile_size:
+            rcc = (state.row_counter, state.column_counter, 0)
+            neighbor = neighbor_from_rcc(rcc, buffer_address_info, kernel_size=kernel_size)
+
+            bank = bank_from_rcc(
+                state.row_counter, state.column_counter, 0, buffer_address_info
+            )
+            entry = entry_from_rcc(
+                state.row_counter, state.column_counter, 0, buffer_address_info
+            )
+            value = buffers[bank][entry]
+
+            value = relu(value)
+
+            if neighbor == Neighbor.NONE:
+                save_value_sparse(state, oaram, oaram_indices, value, max_zero=max_zero)
+
+            increment_column_row(state, buffer_address_info)
+        else:
+            break
 
     return False
 
