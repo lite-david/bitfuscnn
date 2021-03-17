@@ -3,7 +3,7 @@ Methods which implement different hardware components of the accelerator go here
 '''
 
 import utils
-from ppu import bank_from_rcc, BufferAddressInfo
+from ppu import bank_from_rcc, BufferAddressInfo, entry_from_rcc
 
 class CoordinateComputation:
     def __init__(self, weightIndices, activationIndices, weightDim, activationDim, f, i):
@@ -96,13 +96,14 @@ class Crossbar:
 
     # Returns the number of coordinates left to send to buffer bank due to conflict.
     # If 0, that means all coordinates are sent and next set of computation can begin.
-    def route(self, products, coordinates, outputdim):
+    def route(self, products, coordinates, outputdim, bitwidth=0):
         # In a cycle can't accumulate to same bank again. (bank conflict)
         sentbank = {}
         index = 0
         for product, coordinate in zip(products, coordinates):
-            bank = bank_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n))
-            offset = coordinate[0]
+            bank = bank_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n), bitwidth=bitwidth)
+            offset = entry_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n), bitwidth=bitwidth)
+            # offset = coordinate[0]
             if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= outputdim or coordinate[1] >= outputdim:
                 self.sentcoordinates[index] = 1
                 index += 1
