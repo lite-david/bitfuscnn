@@ -1,5 +1,4 @@
 module bitbrick (
-    input clk,
     input [1:0] a,
     input [1:0] b,
     input sa,
