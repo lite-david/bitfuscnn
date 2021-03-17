@@ -5,10 +5,12 @@ import unittest
 from enum import Enum
 import math
 
+
 class BufferAddressInfo:
     def __init__(tc, buffer_count, tile_size=4):
         tc.buffer_count = buffer_count
         tc.tile_size = tile_size
+
 
 @cocotb.coroutine
 def reset_dut(dut):
@@ -98,339 +100,401 @@ def bank_from_rcc(row, column, channel, buffer_address_info, bitwidth=0):
 def entry_from_rcc(row, column, channel, buffer_address_info, bitwidth=0):
     return row >> bitwidth
 
+
 def bank_entry_to_rc(bank, entry, buffer_address_info, bitwidth=0):
     small_buffcount = buffer_address_info.buffer_count >> bitwidth
     row = entry
     row_msb = row << bitwidth
     shift = row * 3
     shift = shift % buffer_address_info.buffer_count
-    column = bank-shift
+    column = bank - shift
     if bank < shift:
         column = bank + buffer_address_info.buffer_count - shift
     col_div = int(math.log2(buffer_address_info.buffer_count))
     row_lsb = column >> (col_div - bitwidth)
     column = column % small_buffcount
     row = row_msb | row_lsb
-    
+
     return (row, column)
+
 
 @cocotb.coroutine
 def read_output(accumulator_buffer, entry):
-  accumulator_buffer.buffer_bank_entry <= entry
-  yield Timer(1)
-  return accumulator_buffer.buffer_data_read.value
+    accumulator_buffer.buffer_bank_entry <= entry
+    yield Timer(1)
+    return accumulator_buffer.buffer_data_read.value
+
 
 def set_write(accumulator_buffer, row, column, data, we):
-  accumulator_buffer.buffer_row_write <= row
-  accumulator_buffer.buffer_column_write <= column
-  accumulator_buffer.buffer_data_write <= data
-  accumulator_buffer.buffer_write_enable <= we
+    accumulator_buffer.buffer_row_write <= row
+    accumulator_buffer.buffer_column_write <= column
+    accumulator_buffer.buffer_data_write <= data
+    accumulator_buffer.buffer_write_enable <= we
+
 
 @cocotb.coroutine
 def cycle_write(accumulator_buffer, row, column, data, we):
-  set_write(accumulator_buffer, row, column, data, we)
-  yield Timer(1)
-  accumulator_buffer.clk <= 1
-  yield Timer(1)
-  accumulator_buffer.clk <= 0
-  yield Timer(1)
+    set_write(accumulator_buffer, row, column, data, we)
+    yield Timer(1)
+    accumulator_buffer.clk <= 1
+    yield Timer(1)
+    accumulator_buffer.clk <= 0
+    yield Timer(1)
+
 
 @cocotb.test()
 def after_reset_reads_zero(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
 
-  accumulator_buffer.bitwidth <= 0
+    accumulator_buffer.bitwidth <= 0
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 0)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 0)
+
 
 @cocotb.test()
 def write_after_reset_sets_value(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 0
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 0
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 1
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 1
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, entry)
-  tc.assertEqual(val, value)
+    val = yield read_output(accumulator_buffer, entry)
+    tc.assertEqual(val, value)
+
 
 @cocotb.test()
 def adjacent_write_preserves_value(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 0
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 0
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 1
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 1
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  bank = 0
-  entry = 1
-  value = 3
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 1
+    value = 3
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 1)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 1)
 
-  bank = 0
-  entry = 0
-  value = 1
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 1
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 1)
-  tc.assertEqual(val, 3)
+    val = yield read_output(accumulator_buffer, 1)
+    tc.assertEqual(val, 3)
+
 
 @cocotb.test()
 def repeated_write_accumulates(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 0
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 0
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 1
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 1
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 2)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 2)
+
 
 @cocotb.test()
 def overflow_is_ignored(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 0
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 0
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 15
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 15
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 14)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 14)
+
 
 @cocotb.test()
 def larger_bitwidth_accumulates_larger_value(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 1
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 1
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 15
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 15
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 30)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 30)
+
 
 @cocotb.test()
 def larger_bitwidth_still_overflows(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 1
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 1
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 255
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 255
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 254)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 254)
+
 
 @cocotb.test()
 def adjacent_write_preserves_value_in_larger_bitwidth(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 1
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 1
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 255
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 255
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  bank = 0
-  entry = 1
-  value = 129
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 1
+    value = 129
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 255)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 255)
 
-  bank = 0
-  entry = 0
-  value = 255
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 255
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 1)
-  tc.assertEqual(val, 129)
+    val = yield read_output(accumulator_buffer, 1)
+    tc.assertEqual(val, 129)
+
 
 @cocotb.test()
 def adjacent_write_preserves_value_in_largest_bitwidth(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 2
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 2
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 0x7FFE
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 0x7FFE
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  bank = 0
-  entry = 1
-  value = 0x8001
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 1
+    value = 0x8001
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 0x7FFE)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 0x7FFE)
 
-  bank = 0
-  entry = 0
-  value = 0x7FFE
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 0x7FFE
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  val = yield read_output(accumulator_buffer, 1)
-  tc.assertEqual(val, 0x8001)
+    val = yield read_output(accumulator_buffer, 1)
+    tc.assertEqual(val, 0x8001)
+
 
 @cocotb.test()
 def transfer_updates_all_values(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 0
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 0
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 1
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
+    bank = 0
+    entry = 0
+    value = 1
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
 
-  accumulator_buffer.data_in <= 0xDEADBEEF
-  accumulator_buffer.transfer <= 1
-  yield Timer(1)
-  accumulator_buffer.clk <= 1
-  yield Timer(1)
-  accumulator_buffer.data_in <= 0
-  accumulator_buffer.transfer <= 0
-  accumulator_buffer.clk <= 0
-  yield Timer(1)
+    accumulator_buffer.data_in <= 0xDEADBEEF
+    accumulator_buffer.transfer <= 1
+    yield Timer(1)
+    accumulator_buffer.clk <= 1
+    yield Timer(1)
+    accumulator_buffer.data_in <= 0
+    accumulator_buffer.transfer <= 0
+    accumulator_buffer.clk <= 0
+    yield Timer(1)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 0xF)
-  val = yield read_output(accumulator_buffer, 1)
-  tc.assertEqual(val, 0xE)
-  val = yield read_output(accumulator_buffer, 2)
-  tc.assertEqual(val, 0xE)
-  val = yield read_output(accumulator_buffer, 3)
-  tc.assertEqual(val, 0xB)
-  val = yield read_output(accumulator_buffer, 4)
-  tc.assertEqual(val, 0xD)
-  val = yield read_output(accumulator_buffer, 5)
-  tc.assertEqual(val, 0xA)
-  val = yield read_output(accumulator_buffer, 6)
-  tc.assertEqual(val, 0xE)
-  val = yield read_output(accumulator_buffer, 7)
-  tc.assertEqual(val, 0xD)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 0xF)
+    val = yield read_output(accumulator_buffer, 1)
+    tc.assertEqual(val, 0xE)
+    val = yield read_output(accumulator_buffer, 2)
+    tc.assertEqual(val, 0xE)
+    val = yield read_output(accumulator_buffer, 3)
+    tc.assertEqual(val, 0xB)
+    val = yield read_output(accumulator_buffer, 4)
+    tc.assertEqual(val, 0xD)
+    val = yield read_output(accumulator_buffer, 5)
+    tc.assertEqual(val, 0xA)
+    val = yield read_output(accumulator_buffer, 6)
+    tc.assertEqual(val, 0xE)
+    val = yield read_output(accumulator_buffer, 7)
+    tc.assertEqual(val, 0xD)
+
 
 @cocotb.test()
 def only_writes_with_we(dut):
-  tc = unittest.TestCase()
-  accumulator_buffer = dut.accumulator_buffer
-  yield reset_dut(accumulator_buffer)
-  BANK_WIDTH = 256
-  BITWIDTH = 1
-  BANK_COUNT = 256
-  buffer_info = BufferAddressInfo(BANK_COUNT)
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 1
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
 
-  accumulator_buffer.bitwidth <= BITWIDTH
+    accumulator_buffer.bitwidth <= BITWIDTH
 
-  bank = 0
-  entry = 0
-  value = 255
-  row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
-  yield cycle_write(accumulator_buffer, row, column, value, 0)
+    bank = 0
+    entry = 0
+    value = 255
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    yield cycle_write(accumulator_buffer, row, column, value, 0)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 0)
-  yield cycle_write(accumulator_buffer, row, column, value, 1)
-  yield cycle_write(accumulator_buffer, row, column, value, 0)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 0)
+    yield cycle_write(accumulator_buffer, row, column, value, 1)
+    yield cycle_write(accumulator_buffer, row, column, value, 0)
 
-  val = yield read_output(accumulator_buffer, 0)
-  tc.assertEqual(val, 255)
+    val = yield read_output(accumulator_buffer, 0)
+    tc.assertEqual(val, 255)
+
+
+@cocotb.test()
+def accumulator_does_not_overflow(dut):
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 0
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
+
+    accumulator_buffer.bitwidth <= BITWIDTH
+
+    bank = 0
+    entry = 0
+    value = 1
+    we = 1
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    for i in range(10):
+        yield cycle_write(accumulator_buffer, row, column, value, we)
+
+    val = yield read_output(accumulator_buffer, entry)
+    tc.assertEqual(val, 7)
+
+@cocotb.test()
+def accumulator_does_not_underflow(dut):
+    tc = unittest.TestCase()
+    accumulator_buffer = dut.accumulator_buffer
+    yield reset_dut(accumulator_buffer)
+    BANK_WIDTH = 256
+    BITWIDTH = 0
+    BANK_COUNT = 256
+    buffer_info = BufferAddressInfo(BANK_COUNT)
+
+    accumulator_buffer.bitwidth <= BITWIDTH
+
+    bank = 0
+    entry = 0
+    value = 0b1111 #-1
+    we = 1
+    row, column = bank_entry_to_rc(bank, entry, buffer_info, bitwidth=BITWIDTH)
+    for i in range(10):
+        yield cycle_write(accumulator_buffer, row, column, value, we)
+
+    val = yield read_output(accumulator_buffer, entry)
+    tc.assertEqual(val, 0b1001) #-7

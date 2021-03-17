@@ -92,4 +92,6 @@ rc_from_bank rc_from_bank(bank, entry, bitwidth, row_output, column_output);
 
 accumulator_buffer accumulator_buffer();
 
+accumulator_bank accumulator_bank();
+
 endmodule
