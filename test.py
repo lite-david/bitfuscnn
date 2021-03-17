@@ -126,7 +126,7 @@ cactivations, activationindices = utils.compress(activations)
 coordinatecompute = CoordinateComputation(weightindices[1:], activationindices[1:], 3, 3, 4, 4)
 multiplierarray = MultiplierArray(cweights, cactivations, 4, 4)
 bufferbank = BufferBankArray(8, 8)
-xbar = Crossbar(32, bufferbank)
+xbar = Crossbar(8, bufferbank)
 
 cycle = 0
 stall = 0
@@ -187,21 +187,21 @@ print(utils.convolve(activations, weights))
 # Test 6: 1 input activation and 2 weight filters
 weight_list = []
 weight_list.append([
-    [1, 0, 1],
-    [0, 0, 0],
-    [1, 0, 1],
+    [0, 1, 0],
+    [1, 1, 1],
+    [0, 1, 0],
 ])
 
 weight_list.append([
-    [1, 1, 0],
-    [1, 1, 0],
+    [0, 0, 0],
+    [0, 0, 0],
     [0, 0, 0],
 ])
 
 activations = [
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 9],
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 0],
 ]
 
 cweights, weightindices = utils.compressMultiple(weight_list)

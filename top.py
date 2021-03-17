@@ -7,7 +7,17 @@ import ppu
 
 
 def do_cycle(
-    bufferbank, weights, weight_indices, activations, activation_indices, banks=32, parallel=4, w_dim=13, a_dim=13, tile_size=32
+    bufferbank,
+    weights,
+    weight_indices,
+    activations,
+    activation_indices,
+    banks=32,
+    parallel=4,
+    w_dim=3,
+    a_dim=13,
+    tile_size=32,
+    bitwidth=0,
 ):
     coordinatecompute = CoordinateComputation(
         weight_indices, activation_indices, w_dim, a_dim, parallel, parallel
@@ -33,7 +43,7 @@ def do_cycle(
     return cycle
 
 
-def do_output_channel(weights, activations, parallel=4, banks=32):
+def do_output_channel(weights, activations, parallel=4, banks=32, bitwidth=0):
     bufferbank = BufferBankArray(banks, banks)
     cycles = 0
     for weight, activation in zip(weights, activations):
@@ -47,13 +57,14 @@ def do_output_channel(weights, activations, parallel=4, banks=32):
             cactivations,
             activationindices[1:],
             parallel=parallel,
-            banks=banks
+            banks=banks,
+            bitwidth=bitwidth,
         )
 
     return bufferbank, cycles
 
 
-def do_ppu_cycle(buffers, buffer_info):
+def do_ppu_cycle(buffers, buffer_info, bitwidth=0):
     state = ppu.PPUState(buffer_info)
     RAM_SIZE = 1024
     neighbor_cts = [True] * 8
@@ -73,6 +84,7 @@ def do_ppu_cycle(buffers, buffer_info):
         neighbor_exchange_done,
         neighbor_cts,
         buffer_address_info=buffer_info,
+        bitwidth=bitwidth
     )
     while not ppu_output.cycle_done:
         cycles += 1
@@ -86,6 +98,7 @@ def do_ppu_cycle(buffers, buffer_info):
             neighbor_exchange_done,
             neighbor_cts,
             buffer_address_info=buffer_info,
+            bitwidth=bitwidth
         )
         neighbor_exchange_done = [ppu_output.exchange_done] * 8
 
@@ -102,19 +115,18 @@ def generate_data(width, height, count, p_zero=0.5, relu=False):
         values.append(value)
     return values
 
+
 def extract_activations_from_oaram(oaram, oaram_indices, size):
     length = oaram[0]
     mat = np.zeros((size, size))
     index = 0
-    for value, zeros in zip(oaram[1:length+1],oaram_indices[:length]):
+    for value, zeros in zip(oaram[1 : length + 1], oaram_indices[:length]):
         index += zeros
         r = index // size
         c = index % size
         mat[r][c] = value
         index += 1
     return mat
-
-
 
 
 # weights = []
@@ -144,50 +156,149 @@ def extract_activations_from_oaram(oaram, oaram_indices, size):
 #     [3, 2, 1],
 # ])
 
-density = 0.5
-SIZE = 13
-parallel = 4
-buffer_info = ppu.BufferAddressInfo(32, tile_size=32)
+def expected_convolve(weights, activations):
+    weight = weights[0]
+    activation = activations[0]
+    conv_so_far = utils.convolve(activation, weight)
+    for weight, activation in zip(weights[1:], activations[1:]):
+        conv_so_far += utils.convolve(activation, weight)
+    return conv_so_far
 
-CHANNELS = 192*2
-# CHANNELS=3
+def do_test(parallel, bitwidth):
+    KERNEL_SIZE=3
+    # scale = 8
+    density = 0.1
+    SIZE = 13
+    # parallel = 4
+    buffer_info = ppu.BufferAddressInfo(32, tile_size=SIZE+2)
 
-bufferbank, cycles_c = do_output_channel(
-    generate_data(SIZE, SIZE, CHANNELS, p_zero=density),
-    generate_data(SIZE, SIZE, CHANNELS, p_zero=density),
-    parallel=parallel
-)
-# next cycle
+    # CHANNELS = 192 * 2
+    CHANNELS=3
 
-CHANNELS = 128*2
-# CHANNELS = 3
-oaram, oaram_indices, cycles_p = do_ppu_cycle(bufferbank, buffer_info)
-
-bufferbank, cycles_c2 = do_output_channel(
-    generate_data(SIZE, SIZE, CHANNELS, p_zero=density),
-    generate_data(SIZE, SIZE, CHANNELS, p_zero=density),
-    parallel=parallel
-)
-# next cycle
-
-oaram, oaram_indices, cycles_p2 = do_ppu_cycle(bufferbank, buffer_info)
-
-max_stage_1 = max(cycles_p, cycles_c2)
-total = cycles_c + max_stage_1 + cycles_p2
-print(
-    "p_zero = {}, stage [{},{},{}] = {}, c1={}, c2={}, p1={}, p2={}".format(
-        density,
-        cycles_c,
-        max_stage_1,
-        cycles_p2,
-        total,
-        cycles_c,
-        cycles_c2,
-        cycles_p,
-        cycles_p2,
+    bufferbank, cycles_c = do_output_channel(
+        generate_data(KERNEL_SIZE, KERNEL_SIZE, CHANNELS, p_zero=density),
+        generate_data(SIZE, SIZE, CHANNELS, p_zero=density),
+        parallel=parallel,
+        bitwidth=bitwidth
     )
-)
+    # next cycle
 
+    # CHANNELS = 128 * 2
+    CHANNELS = 1
+    oaram, oaram_indices, cycles_p = do_ppu_cycle(bufferbank, buffer_info)
+
+    weights = generate_data(KERNEL_SIZE, KERNEL_SIZE, CHANNELS, p_zero=density)
+    # weights = [np.ones((KERNEL_SIZE, KERNEL_SIZE))]
+    # weights[0][0,0] = -1
+    # weights[0][1,1] = -2
+    # weights[0][2,2] = 3
+    # weights[0][1,2] = 4
+    # weights[0][1,0] = 5
+    # activations = [np.ones((SIZE, SIZE))]
+    # activations[0][12,12] = 3
+    # activations = np.mgrid[0:SIZE,0:SIZE]
+    # print(activations[0])
+    activations = generate_data(SIZE, SIZE, CHANNELS, p_zero=density)
+
+    # weights = [np.array([[0, 6, 0],
+    # [ 82, 0, 0],
+    # [ 69,-84, 66],])]
+    # activations = [np.array(
+    # [[ 0,   0,   0,   0,   0,   0, -13,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0, -84,   0,   0, -20,   0,  -2],
+    # [  9,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0, -57,   0,   0, -85,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,  43,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  79,   0],
+    # [  0,   0,   0,   0, -65,   0,  77, -95,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  27],
+    # [  0,   0,   0,   0,   0,   0, 107,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,  95,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  32,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, -44,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]])]
+
+    # weights = [np.array(
+    # [[0, 1, 0],
+    # [ 1, 1, 1],
+    # [ 0, 1, 0],])]
+    # activations = [np.array(
+    # [[ 1,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
+    # [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]])]
+    
+
+    bufferbank, cycles_c2 = do_output_channel(
+        weights,
+        activations,
+        parallel=parallel,
+        bitwidth=bitwidth
+    )
+    # next cycle
+
+    oaram, oaram_indices, cycles_p2 = do_ppu_cycle(bufferbank, buffer_info, bitwidth=bitwidth)
+
+    max_stage_1 = max(cycles_p, cycles_c2)
+    total = cycles_c + max_stage_1 + cycles_p2
+    print(
+        "p_zero = {}, stage [{},{},{}] = {}, c1={}, c2={}, p1={}, p2={}".format(
+            density,
+            cycles_c,
+            max_stage_1,
+            cycles_p2,
+            total,
+            cycles_c,
+            cycles_c2,
+            cycles_p,
+            cycles_p2,
+        )
+    )
+
+    mat = extract_activations_from_oaram(oaram, oaram_indices, SIZE)
+    ACTIVE_SIZE=13
+    active = mat[:ACTIVE_SIZE, :ACTIVE_SIZE]
+    # print(active)
+    
+    conv_so_far = expected_convolve(weights, activations)
+    conv_so_far = np.maximum(0, conv_so_far)
+    # print(conv_so_far)
+    delta = active - conv_so_far
+
+    def print_mat(mat):
+        for i in range(ACTIVE_SIZE):
+            string = ""
+            for k in range(ACTIVE_SIZE):
+                string += "{}\t".format(mat[i][k])
+            print(string)
+    max_delta = np.max(np.abs(delta))
+    if not max_delta == 0:
+        print(weights[0])
+        print(activations[0])
+        print("active:")
+        print_mat(active)
+        print("conv_so_far:")
+        print_mat(conv_so_far)
+
+        print("delta:")
+        print_mat(delta)
+        print(max_delta)
+        return False
+    return True
+
+for i in range(100):
+    passed = do_test(4, 0)
+    if not passed:
+        break
 
 # cweights, weightindices = utils.compress(weights)
 # cactivations, activationindices = utils.compress(activations)
@@ -198,12 +309,12 @@ print(
 #     for k in range(3):
 #         conv_so_far[i][k] += next_conv[i][k]
 
-print(generate_data(SIZE, SIZE, 1, p_zero=density))
-print(oaram)
-print(oaram_indices)
-mat = extract_activations_from_oaram(oaram, oaram_indices, 30)
-active = mat[:13,:13]
-print(active)
+# print(generate_data(SIZE, SIZE, 1, p_zero=density))
+# print(oaram)
+# print(oaram_indices)
+# mat = extract_activations_from_oaram(oaram, oaram_indices, 30)
+# active = mat[:13, :13]
+# print(active)
 # for i in range(13):
 #     string = ""
 #     for k in range(13):

@@ -48,8 +48,8 @@ class CoordinateComputation:
                 # Output activation coordinate = 
                 # Displacement of index in weight filter from filter center + Input Activation coordinate 
                 # The weightDim // 2 is used to calculate the coordinate of filter center 
-                oiRow = (self.weightDim // 2) - weightIndexRow + activationIndexRow
-                oiCol = (self.weightDim // 2) - weightIndexCol + activationIndexCol
+                oiRow = (self.weightDim // 2) - weightIndexRow + activationIndexRow + 1
+                oiCol = (self.weightDim // 2) - weightIndexCol + activationIndexCol + 1
                 # oiRow =  activationIndexRow - weightIndexRow
                 # oiCol =  activationIndexCol - weightIndexCol
                 outputCoordinates.append((oiRow, oiCol))
@@ -67,6 +67,7 @@ class CoordinateComputation:
             self.weightPointer += self.f
             self.weightIndex = wi
             self.activationPointer = 0
+            self.activationIndex = 0
         return outputCoordinates
 
 
@@ -79,6 +80,7 @@ class BufferBankArray:
         return self.buffer[bank][entry]
 
     def accumulate(self, bank, entry, value):
+        # print("buffer[{}][{}]={}".format(bank, entry, value))
         self.buffer[bank][entry] += value
 
     def clear(self):

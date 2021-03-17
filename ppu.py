@@ -211,7 +211,13 @@ def increment_row_column(state, buffer_address_info, kernel_size):
 
 
 def output_partials(
-    state, channel_group_done, neighbor_cts, buffers, buffer_address_info, kernel_size=3
+    state,
+    channel_group_done,
+    neighbor_cts,
+    buffers,
+    buffer_address_info,
+    kernel_size=3,
+    bitwidth=0,
 ):
     neighbor_outputs = [(0, -1, -1, -1)] * 8
 
@@ -228,8 +234,8 @@ def output_partials(
         return neighbor_outputs
 
     rcc = (state.row_counter, state.column_counter, 0)
-    bank = bank_from_rcc(rcc[0], rcc[1], 0, buffer_address_info)
-    entry = entry_from_rcc(rcc[0], rcc[1], 0, buffer_address_info)
+    bank = bank_from_rcc(rcc[0], rcc[1], 0, buffer_address_info, bitwidth=bitwidth)
+    entry = entry_from_rcc(rcc[0], rcc[1], 0, buffer_address_info, bitwidth=bitwidth)
     selected_output = buffers[bank][entry]
 
     if selected_output == 0:
@@ -323,7 +329,9 @@ def output_accumulator(
     for i in range(3):
         if value == 0 and state.row_counter < buffer_address_info.tile_size:
             rcc = (state.row_counter, state.column_counter, 0)
-            neighbor = neighbor_from_rcc(rcc, buffer_address_info, kernel_size=kernel_size)
+            neighbor = neighbor_from_rcc(
+                rcc, buffer_address_info, kernel_size=kernel_size
+            )
 
             bank = bank_from_rcc(
                 state.row_counter, state.column_counter, 0, buffer_address_info
@@ -379,6 +387,7 @@ def ppu(
     neighbor_cts,
     kernel_size=3,
     buffer_address_info=BufferAddressInfo(32),
+    bitwidth=0,
 ):
     buffer_outputs = process_neighbor_inputs(
         state, neighbor_inputs, buffer_address_info
