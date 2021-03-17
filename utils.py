@@ -11,7 +11,7 @@ def compress(matrix):
         for element in row:
             #We store at maximum 15 contiguous zeros
             #This allows us to use 4 bits for each element in compressed vector
-            if element > 0 or zerosCount > 15:
+            if abs(element) > 0.1 or zerosCount > 15:
                 indexVector.append(zerosCount)
                 dataVector.append(element)
                 indexVector[0] += 1
