@@ -14,19 +14,21 @@ class PPUTest(unittest.TestCase):
         back_buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
         neighbor_input = [(0, -1, -1, -1)] * 8
         neighbor_cts = [False] * 8
-        done, buffer_outputs, neighbor_outputs, cts = ppu.ppu(
+        neighbor_exchange_done = [False] * 8
+        ppu_output = ppu.ppu(
             state,
             False,
             oaram,
             oaram_indices,
             back_buffers,
             neighbor_input,
+            neighbor_exchange_done,
             neighbor_cts,
             kernel_size=3,
             buffer_address_info=buffer_info,
         )
-        self.assertTrue(done)
-        self.assertTrue(cts)
+
+        self.assertTrue(ppu_output.clear_to_send)
 
     def test_ppu_saves_incoming_partial_sum(self):
         RAM_SIZE = 1024
@@ -40,13 +42,15 @@ class PPUTest(unittest.TestCase):
         back_buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
         neighbor_input = [(3, 1, 1, 1)] + [(0, -1, -1, -1)] * 7
         neighbor_cts = [False] * 8
-        done, buffer_outputs, neighbor_outputs, cts = ppu.ppu(
+        neighbor_exchange_done = [False] * 8
+        ppu_outputs = ppu.ppu(
             state,
             False,
             oaram,
             oaram_indices,
             back_buffers,
             neighbor_input,
+            neighbor_exchange_done,
             neighbor_cts,
             kernel_size=3,
             buffer_address_info=buffer_info,
@@ -54,7 +58,7 @@ class PPUTest(unittest.TestCase):
 
         expected_buffer_outputs = [(0, -1, -1, -1)] * BUFFER_COUNT
         expected_buffer_outputs[ppu.bank_from_rcc(1, 1, 1, buffer_info)] = (3, 1, 1, 1)
-        self.assertEqual(buffer_outputs, expected_buffer_outputs)
+        self.assertEqual(ppu_outputs.buffer_outputs, expected_buffer_outputs)
 
     def test_has_leftover_inputs(self):
         RAM_SIZE = 1024
@@ -79,44 +83,46 @@ class PPUTest(unittest.TestCase):
         oaram = [0] * RAM_SIZE
         oaram_indices = [0] * RAM_SIZE
         back_buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
-        neighbor_input = [(3, 1, 1, 1), (1,1,1, 1)] + [(0, -1, -1, -1)] * 6
+        neighbor_input = [(3, 1, 1, 1), (1, 1, 1, 1)] + [(0, -1, -1, -1)] * 6
         neighbor_cts = [False] * 8
-        done, buffer_outputs, neighbor_outputs, cts = ppu.ppu(
+        neighbor_exchange_done = [False] * 8
+        ppu_output = ppu.ppu(
             state,
             False,
             oaram,
             oaram_indices,
             back_buffers,
             neighbor_input,
+            neighbor_exchange_done,
             neighbor_cts,
             kernel_size=3,
             buffer_address_info=buffer_info,
         )
-        self.assertFalse(done)
-        self.assertFalse(cts)
+        self.assertFalse(ppu_output.cycle_done)
+        self.assertFalse(ppu_output.clear_to_send)
 
         expected_buffer_outputs = [(0, -1, -1, -1)] * BUFFER_COUNT
         expected_buffer_outputs[ppu.bank_from_rcc(1, 1, 1, buffer_info)] = (3, 1, 1, 1)
-        self.assertEqual(buffer_outputs, expected_buffer_outputs)
+        self.assertEqual(ppu_output.buffer_outputs, expected_buffer_outputs)
 
-        done, buffer_outputs, neighbor_outputs, cts = ppu.ppu(
+        ppu_output = ppu.ppu(
             state,
             False,
             oaram,
             oaram_indices,
             back_buffers,
             neighbor_input,
+            neighbor_exchange_done,
             neighbor_cts,
             kernel_size=3,
             buffer_address_info=buffer_info,
         )
 
-        self.assertTrue(done)
-        self.assertTrue(cts)
+        self.assertTrue(ppu_output.clear_to_send)
 
         expected_buffer_outputs = [(0, -1, -1, -1)] * BUFFER_COUNT
         expected_buffer_outputs[ppu.bank_from_rcc(1, 1, 1, buffer_info)] = (1, 1, 1, 1)
-        self.assertEqual(buffer_outputs, expected_buffer_outputs)
+        self.assertEqual(ppu_output.buffer_outputs, expected_buffer_outputs)
 
     def test_no_partials_in_reset_state(self):
         RAM_SIZE = 1024
@@ -128,7 +134,9 @@ class PPUTest(unittest.TestCase):
         channel_group_done = False
         neighbor_cts = [True] * 8
         buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
-        neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+        neighbor_outputs = ppu.output_partials(
+            state, channel_group_done, neighbor_cts, buffers, buffer_info
+        )
 
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
         self.assertEqual(neighbor_outputs, expected_neighbor_outputs)
@@ -143,7 +151,9 @@ class PPUTest(unittest.TestCase):
         channel_group_done = True
         neighbor_cts = [True] * 8
         buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
-        neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+        neighbor_outputs = ppu.output_partials(
+            state, channel_group_done, neighbor_cts, buffers, buffer_info
+        )
 
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
         self.assertEqual(neighbor_outputs, expected_neighbor_outputs)
@@ -226,61 +236,96 @@ class PPUTest(unittest.TestCase):
         buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=6)
         kernel_size = 3
 
-        self.assertEqual(ppu.Neighbor.TOP_LEFT, ppu.neighbor_from_rcc((0, 0, 0), buffer_info))
-        self.assertEqual(ppu.Neighbor.TOP, ppu.neighbor_from_rcc((0, 2, 0), buffer_info))
-        self.assertEqual(ppu.Neighbor.TOP_RIGHT, ppu.neighbor_from_rcc((0, 5, 0), buffer_info))
-        self.assertEqual(ppu.Neighbor.LEFT, ppu.neighbor_from_rcc((4, 0, 0), buffer_info))
-        self.assertEqual(ppu.Neighbor.RIGHT, ppu.neighbor_from_rcc((3, 5, 0), buffer_info))
-        self.assertEqual(ppu.Neighbor.BOTTOM_LEFT, ppu.neighbor_from_rcc((5, 0, 0), buffer_info))
-        self.assertEqual(ppu.Neighbor.BOTTOM, ppu.neighbor_from_rcc((5, 3, 0), buffer_info))
-        self.assertEqual(ppu.Neighbor.BOTTOM_RIGHT, ppu.neighbor_from_rcc((5, 5, 0), buffer_info))
+        self.assertEqual(
+            ppu.Neighbor.TOP_LEFT, ppu.neighbor_from_rcc((0, 0, 0), buffer_info)
+        )
+        self.assertEqual(
+            ppu.Neighbor.TOP, ppu.neighbor_from_rcc((0, 2, 0), buffer_info)
+        )
+        self.assertEqual(
+            ppu.Neighbor.TOP_RIGHT, ppu.neighbor_from_rcc((0, 5, 0), buffer_info)
+        )
+        self.assertEqual(
+            ppu.Neighbor.LEFT, ppu.neighbor_from_rcc((4, 0, 0), buffer_info)
+        )
+        self.assertEqual(
+            ppu.Neighbor.RIGHT, ppu.neighbor_from_rcc((3, 5, 0), buffer_info)
+        )
+        self.assertEqual(
+            ppu.Neighbor.BOTTOM_LEFT, ppu.neighbor_from_rcc((5, 0, 0), buffer_info)
+        )
+        self.assertEqual(
+            ppu.Neighbor.BOTTOM, ppu.neighbor_from_rcc((5, 3, 0), buffer_info)
+        )
+        self.assertEqual(
+            ppu.Neighbor.BOTTOM_RIGHT, ppu.neighbor_from_rcc((5, 5, 0), buffer_info)
+        )
 
     def test_neighbor_rcc(self):
         BUFFER_COUNT = 6
         buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=6)
         kernel_size = 3
-        
+
         rcc = (0, 0, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.TOP_LEFT, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.TOP_LEFT, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (4, 4, 0))
 
         rcc = (0, 2, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.TOP, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.TOP, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (4, 2, 0))
 
         rcc = (0, 5, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.TOP_RIGHT, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.TOP_RIGHT, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (4, 1, 0))
 
         rcc = (0, 5, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.TOP_RIGHT, buffer_info, kernel_size=5)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.TOP_RIGHT, buffer_info, kernel_size=5
+        )
         self.assertEqual(rcc_neighbor, (2, 3, 0))
 
         rcc = (3, 0, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.LEFT, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.LEFT, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (3, 4, 0))
 
         rcc = (2, 5, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.RIGHT, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.RIGHT, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (2, 1, 0))
 
         rcc = (5, 0, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.BOTTOM_LEFT, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.BOTTOM_LEFT, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (1, 4, 0))
 
         rcc = (5, 3, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.BOTTOM, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.BOTTOM, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (1, 3, 0))
 
         rcc = (5, 5, 0)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.BOTTOM_RIGHT, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.BOTTOM_RIGHT, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (1, 1, 0))
-
 
         BUFFER_COUNT = 32
         buffer_info = ppu.BufferAddressInfo(BUFFER_COUNT, tile_size=32)
         rcc = (0, 1, 1)
-        rcc_neighbor = ppu.get_neighbor_rcc(rcc, ppu.Neighbor.TOP, buffer_info, kernel_size=kernel_size)
+        rcc_neighbor = ppu.get_neighbor_rcc(
+            rcc, ppu.Neighbor.TOP, buffer_info, kernel_size=kernel_size
+        )
         self.assertEqual(rcc_neighbor, (30, 1, 1))
 
     def test_non_zero_partial_after_reset_yields_one_output(self):
@@ -293,11 +338,18 @@ class PPUTest(unittest.TestCase):
         channel_group_done = True
         neighbor_cts = [True] * 8
         buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
-        buffers[0][0] = 5 # 0,0 is outside for kernel size > 1
-        neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+        buffers[0][0] = 5  # 0,0 is outside for kernel size > 1
+        neighbor_outputs = ppu.output_partials(
+            state, channel_group_done, neighbor_cts, buffers, buffer_info
+        )
 
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
-        expected_neighbor_outputs[ppu.Neighbor.TOP_LEFT.value] = (5, 30, 30, 0) # remove padding bottom right corner
+        expected_neighbor_outputs[ppu.Neighbor.TOP_LEFT.value] = (
+            5,
+            30,
+            30,
+            0,
+        )  # remove padding bottom right corner
         self.assertEqual(neighbor_outputs, expected_neighbor_outputs)
 
     def test_non_zero_partial_no_reset_yields_no_outputs(self):
@@ -310,8 +362,10 @@ class PPUTest(unittest.TestCase):
         channel_group_done = False
         neighbor_cts = [True] * 8
         buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
-        buffers[0][0] = 5 # 0,0 is outside for kernel size > 1
-        neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+        buffers[0][0] = 5  # 0,0 is outside for kernel size > 1
+        neighbor_outputs = ppu.output_partials(
+            state, channel_group_done, neighbor_cts, buffers, buffer_info
+        )
 
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
         self.assertEqual(neighbor_outputs, expected_neighbor_outputs)
@@ -328,23 +382,34 @@ class PPUTest(unittest.TestCase):
         buffers = []
         for i in range(BUFFER_COUNT):
             buffers.append([0] * BUFFER_WIDTH)
-        buffers[0][0] = 5 # 0,0 is outside for kernel size > 1
+        buffers[0][0] = 5  # 0,0 is outside for kernel size > 1
 
         bank = ppu.bank_from_rcc(0, 1, 0, buffer_info)
         entry = ppu.entry_from_rcc(0, 1, 0, buffer_info)
         buffers[bank][entry] = 10
-        neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+        neighbor_outputs = ppu.output_partials(
+            state, channel_group_done, neighbor_cts, buffers, buffer_info
+        )
 
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
-        expected_neighbor_outputs[ppu.Neighbor.TOP_LEFT.value] = (5, 30, 30, 0) # remove padding bottom right corner
+        expected_neighbor_outputs[ppu.Neighbor.TOP_LEFT.value] = (
+            5,
+            30,
+            30,
+            0,
+        )  # remove padding bottom right corner
         self.assertEqual(neighbor_outputs, expected_neighbor_outputs)
 
         counter = 0
         while True:
             counter += 1
-            self.assertFalse(counter > RAM_SIZE, "Exceeded runtime at {} cycles".format(counter))
+            self.assertFalse(
+                counter > RAM_SIZE, "Exceeded runtime at {} cycles".format(counter)
+            )
             channel_group_done = False
-            neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+            neighbor_outputs = ppu.output_partials(
+                state, channel_group_done, neighbor_cts, buffers, buffer_info
+            )
             expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
             if neighbor_outputs[ppu.Neighbor.TOP.value] == (10, 30, 1, 0):
                 expected_neighbor_outputs[ppu.Neighbor.TOP.value] = (10, 30, 1, 0)
@@ -363,15 +428,19 @@ class PPUTest(unittest.TestCase):
         neighbor_cts = [True] * 8
         neighbor_cts[ppu.Neighbor.TOP_LEFT.value] = False
         buffers = [[0] * BUFFER_WIDTH] * BUFFER_COUNT
-        buffers[0][0] = 5 # 0,0 is outside for kernel size > 1
-        neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+        buffers[0][0] = 5  # 0,0 is outside for kernel size > 1
+        neighbor_outputs = ppu.output_partials(
+            state, channel_group_done, neighbor_cts, buffers, buffer_info
+        )
 
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
         self.assertEqual(neighbor_outputs, expected_neighbor_outputs)
 
         neighbor_cts = [True] * 8
 
-        neighbor_outputs = ppu.output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_info)
+        neighbor_outputs = ppu.output_partials(
+            state, channel_group_done, neighbor_cts, buffers, buffer_info
+        )
 
         expected_neighbor_outputs = [(0, -1, -1, -1)] * 8
         expected_neighbor_outputs[ppu.Neighbor.TOP_LEFT.value] = (5, 30, 30, 0)

@@ -8,6 +8,7 @@ import math
 import copy
 from enum import Enum
 
+
 class Neighbor(Enum):
     TOP_LEFT = 0
     TOP = 1
@@ -18,6 +19,7 @@ class Neighbor(Enum):
     BOTTOM = 6
     BOTTOM_RIGHT = 7
     NONE = 8
+
 
 class PPUStates(Enum):
     IDLE = 0
@@ -31,6 +33,15 @@ class PPUState:
         self.process_outputs = False
         self.row_counter = 0
         self.column_counter = 0
+        self.exchange_done = False
+        self.index_counter = 0
+        self.zero_counter = 0
+        self.length = 0
+
+
+class PPUOutput:
+    def __init__(self):
+        pass
 
 
 class BufferAddressInfo:
@@ -76,6 +87,7 @@ def has_leftover_inputs(state):
             return True
     return False
 
+
 def process_neighbor_inputs(state, neighbor_inputs, buffer_address_info):
     if not has_leftover_inputs(state):
         state.neighbor_inputs = copy.copy(neighbor_inputs)
@@ -83,14 +95,9 @@ def process_neighbor_inputs(state, neighbor_inputs, buffer_address_info):
     used_banks = [False] * buffer_address_info.buffer_count
     for i in range(len(state.neighbor_inputs)):
         partial = state.neighbor_inputs[i]
-        if(partial[1] < 0):
+        if partial[1] < 0:
             continue
-        bank = bank_from_rcc(
-            partial[1],
-            partial[2],
-            partial[3],
-            buffer_address_info
-        )
+        bank = bank_from_rcc(partial[1], partial[2], partial[3], buffer_address_info)
         if used_banks[bank]:
             continue
         used_banks[bank] = True
@@ -98,6 +105,7 @@ def process_neighbor_inputs(state, neighbor_inputs, buffer_address_info):
         state.neighbor_inputs[i] = (0, -1, -1, -1)
 
     return buffer_outputs
+
 
 def neighbor_from_rcc(rcc, buffer_address_info, kernel_size=3):
     tile_size = buffer_address_info.tile_size
@@ -128,8 +136,9 @@ def neighbor_from_rcc(rcc, buffer_address_info, kernel_size=3):
 
     return Neighbor.NONE
 
+
 def get_neighbor_rcc(rcc, neighbor, buffer_address_info, kernel_size=3):
-    halo_size = (kernel_size-1)/2
+    halo_size = (kernel_size - 1) / 2
     row_top = buffer_address_info.tile_size - rcc[0] - 2 * halo_size
     row_bottom = rcc[0] - buffer_address_info.tile_size + 2 * halo_size
     column_left = buffer_address_info.tile_size - rcc[1] - 2 * halo_size
@@ -177,19 +186,31 @@ def get_neighbor_rcc(rcc, neighbor, buffer_address_info, kernel_size=3):
 
     return rcc
 
+
 def increment_row_column(state, buffer_address_info):
     state.row_counter += 1
     if state.row_counter >= buffer_address_info.tile_size:
         state.row_counter = 0
         state.column_counter += 1
 
-def output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_address_info, kernel_size=3):
+    if state.column_counter >= buffer_address_info.tile_size:
+        state.column_counter = 0
+        state.exchange_done = True
+
+
+def output_partials(
+    state, channel_group_done, neighbor_cts, buffers, buffer_address_info, kernel_size=3
+):
     neighbor_outputs = [(0, -1, -1, -1)] * 8
 
     if not state.process_outputs and channel_group_done:
         state.row_counter = 0
         state.column_counter = 0
         state.process_outputs = True
+        state.exchange_done = False
+
+    if state.exchange_done:
+        return neighbor_outputs
 
     if not state.process_outputs:
         return neighbor_outputs
@@ -202,14 +223,17 @@ def output_partials(state, channel_group_done, neighbor_cts, buffers, buffer_add
     if selected_output == 0:
         increment_row_column(state, buffer_address_info)
         return neighbor_outputs
-        
+
     neighbor = neighbor_from_rcc(rcc, buffer_address_info, kernel_size=kernel_size)
+
+    if neighbor == Neighbor.NONE:
+        increment_row_column(state, buffer_address_info)
+        return neighbor_outputs
+
     if not neighbor_cts[neighbor.value]:
         return neighbor_outputs
 
     increment_row_column(state, buffer_address_info)
-    if neighbor == Neighbor.NONE:
-        return neighbor_outputs
 
     rcc = get_neighbor_rcc(rcc, neighbor, buffer_address_info, kernel_size=kernel_size)
     neighbor_outputs[neighbor.value] = (selected_output, rcc[0], rcc[1], rcc[2])
@@ -286,7 +310,6 @@ def output_accumulator(
 
     return False
 
-    return neighbor_outputs
 
 """
 This method applies one clock cycle for the PPU
@@ -297,13 +320,17 @@ This method applies one clock cycle for the PPU
 :param oaram_indices: array of the output activation indices
 :param buffers: back buffers of the accumulators 
 :param neighbor_inputs: array of eight weight tuples (value, x, y) 
+:param neighbor_exchange_done: array of booleans for neighbors exchange_done signals
 :param neighbor_cts: array of eight cts signals from neighbors
 :param kernel_size: size of the kernel width and height, used to determin output halo
 :param buffer_address_info: info about the accumulator buffers
-:returns: (done, buffer_outputs, neighbor_outputs, clear_to_send) 
+:returns: {cycle_done, buffer_outputs, neighbor_outputs, clear_to_send, exchange_done} 
+          cycle_done is true if the full cycle is done
           buffer_outputs are a list of tuples with locations of where to
-          place each iin the accumulator buffers
-          clear to send is an array of cts's for each neighbor
+          place each in the accumulator buffers
+          neighbor_outputs is an array of (value, r, c, c) tuples destine to each neighbor
+          clear_to_send is an array of cts's for each neighbor
+          exchange_done is true if the ppu has sent all data, remains true until next cycle_done
 """
 
 
@@ -314,10 +341,37 @@ def ppu(
     oaram_indices,
     buffers,
     neighbor_inputs,
+    neighbor_exchange_done,
     neighbor_cts,
     kernel_size=3,
-    buffer_address_info=BufferAddressInfo(32)
+    buffer_address_info=BufferAddressInfo(32),
 ):
-    buffer_outputs = process_neighbor_inputs(state, neighbor_inputs, buffer_address_info)
+    buffer_outputs = process_neighbor_inputs(
+        state, neighbor_inputs, buffer_address_info
+    )
+    neighbor_outputs = output_partials(
+        state,
+        channel_group_done,
+        neighbor_cts,
+        buffers,
+        buffer_address_info,
+        kernel_size=kernel_size,
+    )
 
-    return (not has_leftover_inputs(state), buffer_outputs, False, not has_leftover_inputs(state))
+    done = output_accumulator(
+        state,
+        oaram,
+        oaram_indices,
+        buffers,
+        neighbor_exchange_done,
+        buffer_address_info,
+        kernel_size=kernel_size,
+    )
+
+    ppu_output = PPUOutput()
+    ppu_output.cycle_done = done
+    ppu_output.buffer_outputs = buffer_outputs
+    ppu_output.neighbor_outputs = neighbor_outputs
+    ppu_output.clear_to_send = not has_leftover_inputs(state)
+    ppu_output.exchange_done = state.exchange_done
+    return ppu_output
