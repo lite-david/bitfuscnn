@@ -73,12 +73,12 @@ always_comb begin
   case(bitwidth)
   2'b10:
     begin
-      for(i = 0; i<15; i++) begin
+      for(i = 0; i<16; i++) begin
         // Compute bank that a row,column goes to 
         bank = bank_from_rc(row_coordinate[i], column_coordinate[i]);
         // If bank hasn't been sent to and, 
         // the input hasn't already been sent in a previous cycle
-        if(!used_banks[bank] && !inputs_sent[i]) begin
+        if(!used_banks[bank] & !inputs_sent[i]) begin
           next_buffer_row_write[bank] = row_coordinate[i];
           next_buffer_column_write[bank] = column_coordinate[i];
           // Truncate to 8 bits, since accumulator stores 8 bit values only
@@ -138,7 +138,7 @@ task route();
     buffer_data_write[i] <= next_buffer_data_write[i];
     buffer_column_write[i] <= next_buffer_column_write[i];
     buffer_row_write[i] <= next_buffer_row_write[i];
-    inputs_sent <= inputs_sent | next_inputs_sent;
+    inputs_sent <= next_inputs_sent | inputs_sent;
     //Handle stall signal and reset the inputs_sent 
     case(bitwidth)
       2'b10:
@@ -147,11 +147,11 @@ task route();
             crossbar_stall <= 0;
           end
           else begin
-            if (inputs_sent ^ 65535 > 0) begin
-              crossbar_stall <= 1;
+            if (inputs_sent == 65535) begin
+              reset();
             end
             else begin
-              reset();
+              crossbar_stall <= 1;
             end
           end
         end
