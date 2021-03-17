@@ -2,9 +2,10 @@
 Code for different testcases goes here
 '''
 import utils
-from bitfuscnn import CoordinateComputation, MultiplierArray
+from bitfuscnn import CoordinateComputation, MultiplierArray, BufferBankArray, Crossbar
 from scipy.ndimage import convolve
 
+# Test 1
 weights = [
     [1, 0, 1],
     [0, 0, 0],
@@ -12,8 +13,8 @@ weights = [
 ]
 activations = [
     [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 9],
+    [4, 0, 0],
+    [0, 0, 0],
 ]
 cweights, weightindices = utils.compress(weights)
 cactivations, activationindices = utils.compress(activations)
@@ -37,6 +38,7 @@ print('Cycles: ' + str(cycle))
 print(results)
 print(utils.convolve(activations, weights))
 
+# Test 2
 weights = [
     [1, 0, 1],
     [0, 0, 0],
