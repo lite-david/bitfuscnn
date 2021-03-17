@@ -175,8 +175,8 @@ def do_test(parallel, bitwidth, density):
     # parallel = 4
     buffer_info = ppu.BufferAddressInfo(BANKS, tile_size=SIZE + 2)
 
-    # CHANNELS = 192 * 2
-    CHANNELS = 1
+    CHANNELS = 192 * 2
+    # CHANNELS = 1
 
     bufferbank, cycles_c = do_output_channel(
         generate_data(KERNEL_SIZE, KERNEL_SIZE, CHANNELS, p_zero=density),
@@ -187,8 +187,8 @@ def do_test(parallel, bitwidth, density):
     )
     # next cycle
 
-    # CHANNELS = 128 * 2
-    CHANNELS = 1
+    CHANNELS = 192 * 2
+    # CHANNELS = 1
     oaram, oaram_indices, cycles_p = do_ppu_cycle(bufferbank, buffer_info)
 
     weights = generate_data(KERNEL_SIZE, KERNEL_SIZE, CHANNELS, p_zero=density)
@@ -218,6 +218,20 @@ def do_test(parallel, bitwidth, density):
     #         cycles_p2,
     #     )
     # )
+    
+    print(
+        "{},{},{},{},{},{},{},{},{}".format(
+            density,
+            cycles_c,
+            max_stage_1,
+            cycles_p2,
+            total,
+            cycles_c,
+            cycles_c2,
+            cycles_p,
+            cycles_p2,
+        )
+    )
 
     mat = extract_activations_from_oaram(oaram, oaram_indices, SIZE)
     ACTIVE_SIZE = 13
@@ -252,34 +266,46 @@ def do_test(parallel, bitwidth, density):
     return True, total, cycles_c + cycles_c2, cycles_p + cycles_p2
 
 
+def do_experiment(bitwidth, parallel, sparsity):
+    cycle_counts = []
+    cycle_conv = []
+    cycle_ppu = []
+    print("bitwidth parallel sparsity,{},{},{}".format(bitwidth, parallel, sparsity))
+    for i in range(10):
+        passed, cycles, conv, ppu_cycles = do_test(parallel, bitwidth, sparsity)
+        cycle_counts.append(cycles)
+        cycle_conv.append(conv)
+        cycle_ppu.append(ppu_cycles)
+        if not passed:
+            break
+
+    cycle_counts = np.array(cycle_counts)
+    std_dev = np.std(cycle_counts)
+    mean = np.mean(cycle_counts)
+
+    mean_conv = np.mean(cycle_conv)
+    mean_ppu = np.mean(cycle_ppu)
+
+    # print(
+    #     "For bitwidth {} running {} || multiplies at sparsity {} give {} cycles with stdev {}".format(
+    #         bitwidth, parallel, sparsity, mean, std_dev
+    #     )
+    # )
+    # print("{} cycles in conv, {} cycles in ppu".format(mean_conv, mean_ppu))
+
+print("density, stage 1, stage 2, stage 3, total, conv 1, conv 2, ppu 1, ppu 2")
 BITWIDTH = 0
 PARALLEL = 16
 SPARSITY = 0.3
-cycle_counts = []
-cycle_conv = []
-cycle_ppu = []
-for i in range(100):
-    passed, cycles, conv, ppu_cycles = do_test(PARALLEL, BITWIDTH, SPARSITY)
-    cycle_counts.append(cycles)
-    cycle_conv.append(conv)
-    cycle_ppu.append(ppu_cycles)
-    if not passed:
-        break
+do_experiment(BITWIDTH, PARALLEL, SPARSITY)
 
-cycle_counts = np.array(cycle_counts)
-std_dev = np.std(cycle_counts)
-mean = np.mean(cycle_counts)
+BITWIDTH = 1
+PARALLEL = 8
+do_experiment(BITWIDTH, PARALLEL, SPARSITY)
 
-mean_conv = np.mean(cycle_conv)
-mean_ppu = np.mean(cycle_ppu)
-
-print(
-    "For bitwidth {} running {} || multiplies at sparsity {} give {} cycles with stdev {}".format(
-        BITWIDTH, PARALLEL, SPARSITY, mean, std_dev
-    )
-)
-print("{} cycles in conv, {} cycles in ppu".format(mean_conv, mean_ppu))
-
+BITWIDTH = 2
+PARALLEL = 4
+do_experiment(BITWIDTH, PARALLEL, SPARSITY)
 
 # cweights, weightindices = utils.compress(weights)
 # cactivations, activationindices = utils.compress(activations)
