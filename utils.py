@@ -9,7 +9,9 @@ def compress(matrix):
     zerosCount = 0
     for row in matrix:
         for element in row:
-            if element > 0:
+            #We store at maximum 15 contiguous zeros
+            #This allows us to use 4 bits for each element in compressed vector
+            if element > 0 or zerosCount > 15:
                 indexVector.append(zerosCount)
                 dataVector.append(element)
                 indexVector[0] += 1
@@ -17,6 +19,22 @@ def compress(matrix):
             else:
                 zerosCount += 1
 
+    return dataVector, indexVector
+
+def compressMultiple(matrixlist):
+    dataVector = []
+    indexVector = [0]
+    zerosCount = 0
+    for matrix in matrixlist:
+        for row in matrix:
+            for element in row:
+                if element > 0 or zerosCount > 15:
+                    indexVector.append(zerosCount)
+                    dataVector.append(element)
+                    indexVector[0] += 1
+                    zerosCount = 0
+                else:
+                    zerosCount += 1
     return dataVector, indexVector
 
 def convolve(activations, weights):
@@ -32,6 +50,12 @@ def convolve(activations, weights):
         for j in range(x):
             new_image[i][j] = np.sum(a[i:i+m, j:j+m]*w)
     return new_image
+
+def convolveMultiple(activations, weight_list):
+    result = np.zeros((len(activations), len(activations[0])))
+    for weights in weight_list:
+        result += convolve(activations, weights)
+    return result
 
 
 
