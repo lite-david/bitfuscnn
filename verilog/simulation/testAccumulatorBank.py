@@ -161,8 +161,6 @@ def cycle_write(
     set_front_write(accumulator_bank, front_row, front_column, front_data, front_we)
     set_back_write(accumulator_bank, back_row, back_column, back_data, back_we)
     yield Timer(1)
-    print(accumulator_bank.front_buffer_data_write.value)
-    print(accumulator_bank.front_buffer.buffer_data_write.value)
     accumulator_bank.clk <= 1
     yield Timer(1)
     accumulator_bank.clk <= 0

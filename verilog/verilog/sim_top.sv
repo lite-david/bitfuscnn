@@ -94,4 +94,8 @@ accumulator_buffer accumulator_buffer();
 
 accumulator_bank accumulator_bank();
 
+accumulator_banks accumulator_banks();
+
+defparam accumulator_banks.BANK_COUNT = 10;
+
 endmodule

@@ -14,7 +14,7 @@ module accumulator_bank #(
          input wire front_buffer_write_enable,
 
          input wire [$clog2(BUFFER_WIDTH)-1:0] front_buffer_bank_entry,
-         output logic [SMALLEST_ELEMENT_WIDTH*4-1:0] front_buffer_data_read,
+         output wire [SMALLEST_ELEMENT_WIDTH*4-1:0] front_buffer_data_read,
 
          input wire [$clog2(TILE_SIZE)-1:0] back_buffer_row_write,
          input wire [$clog2(TILE_SIZE)-1:0] back_buffer_column_write,
@@ -22,7 +22,7 @@ module accumulator_bank #(
          input wire back_buffer_write_enable,
 
          input wire [$clog2(BUFFER_WIDTH)-1:0] back_buffer_bank_entry,
-         output logic [SMALLEST_ELEMENT_WIDTH*4-1:0] back_buffer_data_read
+         output wire [SMALLEST_ELEMENT_WIDTH*4-1:0] back_buffer_data_read
 
        );
 
