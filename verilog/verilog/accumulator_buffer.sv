@@ -23,6 +23,8 @@ module accumulator_buffer #(
 logic [BUFFER_WIDTH*SMALLEST_ELEMENT_WIDTH-1:0] data;
 logic [SMALLEST_ELEMENT_WIDTH*4-1:0] data_accumulate;
 
+assign data_out = data;
+
 function logic unsigned [3:0] get_bitshift(
     input logic unsigned [1:0] bitwidth
   );
@@ -107,6 +109,55 @@ always @(posedge clk or negedge reset_n) begin
   end
 end
 
+function logic overflow(
+  input logic [SMALLEST_ELEMENT_WIDTH*4-1:0] a,
+  input logic [SMALLEST_ELEMENT_WIDTH*4-1:0] b,
+  input logic [1:0] bitwidth
+);
+logic [$clog2(BUFFER_WIDTH*SMALLEST_ELEMENT_WIDTH)-1:0] select;
+logic [SMALLEST_ELEMENT_WIDTH*4:0] accumulator;
+logic sign_bit;
+logic a_sign_bit;
+logic b_sign_bit;
+logic overflow_bit;
+select = 1 << get_bitshift(bitwidth);
+
+accumulator = a + b;
+overflow = 0;
+sign_bit = accumulator[select-1];
+overflow_bit = accumulator[select];
+a_sign_bit = a[select-1];
+b_sign_bit = b[select-1];
+if(!a_sign_bit & !b_sign_bit & sign_bit) begin
+  overflow = 1;
+end
+endfunction
+
+function logic [SMALLEST_ELEMENT_WIDTH*4-1:0] safe_add(
+  input logic [SMALLEST_ELEMENT_WIDTH*4-1:0] a,
+  input logic [SMALLEST_ELEMENT_WIDTH*4-1:0] b,
+  input logic [1:0] bitwidth
+);
+logic [$clog2(BUFFER_WIDTH*SMALLEST_ELEMENT_WIDTH)-1:0] select;
+logic [SMALLEST_ELEMENT_WIDTH*4-1:0] a_inv;
+logic [SMALLEST_ELEMENT_WIDTH*4-1:0] b_inv;
+logic sign_bit;
+logic a_sign_bit;
+logic b_sign_bit;
+logic overflow_bit;
+select = 1 << get_bitshift(bitwidth);
+
+safe_add = a + b;
+a_inv = ~a + 1;
+b_inv = ~b + 1;
+if(overflow(a_inv, b_inv, bitwidth)) begin
+  safe_add = (1 << select-1) + 1;
+end
+if(overflow(a, b, bitwidth)) begin
+  safe_add = (1 << select-1) -1;
+end
+endfunction
+
 int i;
 always_comb begin : read_block
   buffer_data_read = 0;
@@ -119,7 +170,7 @@ always_comb begin : read_block
     data_accumulate[i] = data_accumulate[i] & is_valid(i);
   end
 
-  data_accumulate += buffer_data_write;
+  data_accumulate = safe_add(data_accumulate, buffer_data_write, bitwidth);
 end
 
 // initial begin

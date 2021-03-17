@@ -3,7 +3,7 @@ Methods which implement different hardware components of the accelerator go here
 '''
 
 import utils
-from ppu import bank_from_rcc, BufferAddressInfo
+from ppu import bank_from_rcc, BufferAddressInfo, entry_from_rcc
 
 class CoordinateComputation:
     def __init__(self, weightIndices, activationIndices, weightDim, activationDim, f, i):
@@ -48,8 +48,8 @@ class CoordinateComputation:
                 # Output activation coordinate = 
                 # Displacement of index in weight filter from filter center + Input Activation coordinate 
                 # The weightDim // 2 is used to calculate the coordinate of filter center 
-                oiRow = (self.weightDim // 2) - weightIndexRow + activationIndexRow
-                oiCol = (self.weightDim // 2) - weightIndexCol + activationIndexCol
+                oiRow = (self.weightDim // 2) - weightIndexRow + activationIndexRow + 1
+                oiCol = (self.weightDim // 2) - weightIndexCol + activationIndexCol + 1
                 # oiRow =  activationIndexRow - weightIndexRow
                 # oiCol =  activationIndexCol - weightIndexCol
                 outputCoordinates.append((oiRow, oiCol))
@@ -67,6 +67,7 @@ class CoordinateComputation:
             self.weightPointer += self.f
             self.weightIndex = wi
             self.activationPointer = 0
+            self.activationIndex = 0
         return outputCoordinates
 
 
@@ -79,6 +80,7 @@ class BufferBankArray:
         return self.buffer[bank][entry]
 
     def accumulate(self, bank, entry, value):
+        # print("buffer[{}][{}]={}".format(bank, entry, value))
         self.buffer[bank][entry] += value
 
     def clear(self):
@@ -94,20 +96,21 @@ class Crossbar:
 
     # Returns the number of coordinates left to send to buffer bank due to conflict.
     # If 0, that means all coordinates are sent and next set of computation can begin.
-    def route(self, products, coordinates, outputdim):
+    def route(self, products, coordinates, outputdim, bitwidth=0):
         # In a cycle can't accumulate to same bank again. (bank conflict)
         sentbank = {}
         index = 0
         for product, coordinate in zip(products, coordinates):
-            bank = bank_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n))
-            offset = coordinate[0]
+            bank = bank_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n), bitwidth=bitwidth)
+            offset = entry_from_rcc(coordinate[0], coordinate[1], 0, BufferAddressInfo(self.n), bitwidth=bitwidth)
+            # offset = coordinate[0]
             if coordinate[0] < 0 or coordinate[1] < 0 or coordinate[0] >= outputdim or coordinate[1] >= outputdim:
                 self.sentcoordinates[index] = 1
                 index += 1
                 continue
             if bank not in sentbank and index not in self.sentcoordinates:
                 self.bufferbank.accumulate(bank, offset, product)
-                print(coordinate)
+                # print(coordinate)
                 sentbank[bank] = 1
                 self.sentcoordinates[index] = 1
             index += 1

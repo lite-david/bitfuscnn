@@ -93,4 +93,14 @@ rc_from_bank rc_from_bank(bank, entry, bitwidth, row_output, column_output);
 accumulator_buffer accumulator_buffer();
 crossbar crossbar();
 
+accumulator_bank accumulator_bank();
+
+accumulator_banks accumulator_banks();
+
+defparam accumulator_banks.BANK_COUNT = 10;
+
+fusion_unit fusion_unit();
+
+bitfuscnn bitfuscnn();
+
 endmodule
