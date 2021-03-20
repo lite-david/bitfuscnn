@@ -368,8 +368,8 @@ end
      //Input from multiplier array
      .products(mult_pipe_out_1),
      //Inputs from coordinate computation
-     .row_coordinate(row_coordinate_pipe_out),
-     .column_coordinate(column_coordinate_pipe_out),
+     .row_coordinate(row_coordinate_pipe_out[7:0]),
+     .column_coordinate(column_coordinate_pipe_out[7:0]),
      //Buffer bank interface
      .buffer_row_write(front_buffer_row_write),
      .buffer_column_write(front_buffer_column_write),
