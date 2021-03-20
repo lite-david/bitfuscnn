@@ -2,7 +2,8 @@ module output_accumulator
        #(parameter integer RAM_WIDTH = 10,
          parameter integer BANK_COUNT = 32,
          parameter integer TILE_SIZE = 256,
-         parameter integer INDEX_WIDTH = 4)(
+         parameter integer INDEX_WIDTH = 4,
+         parameter integer DATA_WIDTH = 16)(
          input wire clk,
          input wire reset_n,
          input wire[1:0] bitwidth,
@@ -14,7 +15,7 @@ module output_accumulator
 
          output logic [$clog2(BANK_COUNT)-1:0] buffer_bank_read,
          output logic [$clog2(TILE_SIZE)-1:0] buffer_bank_entry,
-         input wire [7:0] buffer_data_read,
+         input wire [DATA_WIDTH-1:0] buffer_data_read,
 
          input wire [7:0] neighbor_exchange_done,
          output logic done
@@ -134,7 +135,7 @@ function logic is_in_center(
   return 1;
 endfunction
 
-function logic [7:0] relu(input logic [7:0] value);
+function logic [DATA_WIDTH-1:0] relu(input logic [DATA_WIDTH-1:0] value);
 logic [7:0] bit_index;
 bit_index = (2 << bitwidth) - 1;
 if(value[bit_index]) begin

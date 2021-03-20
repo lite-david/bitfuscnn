@@ -1,8 +1,10 @@
 module bitfuscnn
   #(parameter integer RAM_WIDTH = 14,
-    parameter integer BANK_COUNT = 256,
+    parameter integer BANK_COUNT = 16,
     parameter integer TILE_SIZE = 256,
-    parameter integer INDEX_WIDTH = 4) (
+    parameter integer BUFFER_WIDTH = TILE_SIZE*TILE_SIZE/BANK_COUNT,
+    parameter integer INDEX_WIDTH = 4,
+    parameter integer DATA_WIDTH = 16) (
     input clk,
     input reset_n,
     input read_ram,
@@ -19,7 +21,7 @@ module bitfuscnn
     output [INDEX_WIDTH-1:0] oaram_indices_value,
     output [RAM_WIDTH-1:1] oaram_address,
     output oaram_write_enable,
-    input wire[7:0] neighbor_input_value[8],
+    input wire[DATA_WIDTH-1:0] neighbor_input_value[8],
     input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_row[8],
     input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_column[8],
     input wire [7:0]neighbor_input_write_enable,
@@ -34,7 +36,7 @@ module bitfuscnn
 
     output wire clear_to_send,
     output wire exchange_done,
-    output wire[7:0] neighbor_output_value[8],
+    output wire[DATA_WIDTH-1:0] neighbor_output_value[8],
     output wire[$clog2(TILE_SIZE)-1:0] neighbor_output_row[8],
     output wire[$clog2(TILE_SIZE)-1:0] neighbor_output_column[8],
     output wire neighbor_output_write_enable[8],
@@ -46,26 +48,26 @@ logic [7:0] weight_fifo[4], activation_fifo[4], mult_weight_pipe_in[4], mult_act
 logic [63:0] mult_pipe_out_0[16], mult_pipe_out_1[16], mult_wire_out[16];
 logic [15:0] weight_index_fifo[4], activation_index_fifo[4], weight_index_pipe_in[4], activation_index_pipe_in[4];
 logic [3:0] weight_index_fifo_x[16], activation_index_fifo_x[16];
-logic [15:0] row_coordinate[256], column_coordinate[256], row_coordinate_pipe_out[256], column_coordinate_pipe_out[256];
+logic [$clog2(TILE_SIZE)-1:0] row_coordinate[256], column_coordinate[256], row_coordinate_pipe_out[256], column_coordinate_pipe_out[256];
 
 logic [2:0] count;
 logic ram_read_done;
 
-logic [7:0] front_buffer_row_write[256], front_buffer_column_write[256], front_buffer_data_write[256];
-logic [7:0] front_buffer_row_write_pipe[256], front_buffer_column_write_pipe[256], front_buffer_data_write_pipe[256];
-logic front_buffer_write_enable[256], front_buffer_write_enable_pipe[256];
+logic [7:0] front_buffer_row_write[BANK_COUNT], front_buffer_column_write[BANK_COUNT], front_buffer_data_write[BANK_COUNT];
+logic [7:0] front_buffer_row_write_pipe[BANK_COUNT], front_buffer_column_write_pipe[BANK_COUNT], front_buffer_data_write_pipe[BANK_COUNT];
+logic front_buffer_write_enable[BANK_COUNT], front_buffer_write_enable_pipe[BANK_COUNT];
 
 logic cxb_stall;
 
 logic transfer_1;
 
-logic [$clog2(256)-1:0] back_buffer_row_write[256];
-logic [$clog2(256)-1:0] back_buffer_column_write[256];
-logic [7:0] back_buffer_data_write[256];
-logic back_buffer_write_enable[256];
+logic [$clog2(TILE_SIZE)-1:0] back_buffer_row_write[BANK_COUNT];
+logic [$clog2(TILE_SIZE)-1:0] back_buffer_column_write[BANK_COUNT];
+logic [DATA_WIDTH-1:0] back_buffer_data_write[BANK_COUNT];
+logic back_buffer_write_enable[BANK_COUNT];
 
-logic [$clog2(256)-1:0] back_buffer_bank_read;
-logic [$clog2(256)-1:0] back_buffer_bank_entry;
+logic [$clog2(BANK_COUNT)-1:0] back_buffer_bank_read;
+logic [$clog2(BUFFER_WIDTH)-1:0] back_buffer_bank_entry;
 logic [15:0] back_buffer_data_read;
 
 logic [4:0] weight_counter;
@@ -368,8 +370,8 @@ end
      //Input from multiplier array
      .products(mult_pipe_out_1),
      //Inputs from coordinate computation
-     .row_coordinate(row_coordinate_pipe_out[7:0]),
-     .column_coordinate(column_coordinate_pipe_out[7:0]),
+     .row_coordinate(row_coordinate_pipe_out),
+     .column_coordinate(column_coordinate_pipe_out),
      //Buffer bank interface
      .buffer_row_write(front_buffer_row_write),
      .buffer_column_write(front_buffer_column_write),
@@ -379,10 +381,12 @@ end
      .crossbar_stall(cxb_stall)
  );
 
+ defparam cxb.BANK_COUNT = BANK_COUNT;
+
 always_ff@(posedge clk or negedge reset_n) begin //crossbar output pipeline
     if(!reset_n) begin
         // reset();
-        for(i = 0; i<256; i++) begin
+        for(i = 0; i<BANK_COUNT; i++) begin
             front_buffer_row_write_pipe[i] <= 0;
             front_buffer_column_write_pipe[i] <= 0;
             front_buffer_data_write_pipe[i] <= 0;
@@ -408,7 +412,9 @@ always_ff@(posedge clk or negedge reset_n) begin //crossbar output pipeline
 end
 
 wire [4*4-1:0] front_buffer_data_read;
-wire [$clog2(256)-1:0] zero;
+wire [$clog2(BUFFER_WIDTH)-1:0] zero_buffer_width = 0;
+wire [$clog2(TILE_SIZE)-1:0] zero_tile_size = 0;
+wire [$clog2(TILE_SIZE)-1:0] back_buffer_bank_read_padded = back_buffer_bank_read;
 
 accumulator_banks acc_bank (
     .clk(clk),
@@ -423,15 +429,16 @@ accumulator_banks acc_bank (
     .back_buffer_column_write(back_buffer_column_write),
     .back_buffer_data_write(back_buffer_data_write),
     .back_buffer_write_enable(back_buffer_write_enable),
-    .front_buffer_bank_entry(zero),
-    .front_buffer_bank_read(zero),
+    .front_buffer_bank_entry(zero_buffer_width),
+    .front_buffer_bank_read(zero_tile_size),
     .front_buffer_data_read(front_buffer_data_read),
     .back_buffer_bank_entry(back_buffer_bank_entry),
-    .back_buffer_bank_read(back_buffer_bank_read),
+    .back_buffer_bank_read(back_buffer_bank_read_padded),
     .back_buffer_data_read(back_buffer_data_read)
 );
 
-defparam acc_bank.BUFFER_WIDTH = 256;
+defparam acc_bank.BUFFER_WIDTH = BUFFER_WIDTH;
+defparam acc_bank.BANK_COUNT = BANK_COUNT;
 
 always_ff@(posedge clk or negedge reset_n) begin
     if(!reset_n) begin
@@ -456,9 +463,9 @@ ppu ppu (
     .buffer_column_write(back_buffer_column_write),
     .buffer_data_write(back_buffer_data_write),
     .buffer_write_enable(back_buffer_write_enable),
-    .buffer_bank_read(back_buffer_bank_entry),
-    .buffer_bank_entry(back_buffer_bank_read),
-    .buffer_data_read(back_buffer_data_read[7:0]),
+    .buffer_bank_read(back_buffer_bank_read),
+    .buffer_bank_entry(back_buffer_bank_entry),
+    .buffer_data_read(back_buffer_data_read),
     .neighbor_input_value(neighbor_input_value),
     .neighbor_input_row(neighbor_input_row),
     .neighbor_input_column(neighbor_input_column),
@@ -473,5 +480,9 @@ ppu ppu (
     .neighbor_output_column(neighbor_output_column),
     .neighbor_output_write_enable(neighbor_output_write_enable)
 );
+
+defparam ppu.BUFFER_WIDTH = BUFFER_WIDTH;
+defparam ppu.BANK_COUNT = BANK_COUNT;
+defparam ppu.DATA_WIDTH = DATA_WIDTH;
 
 endmodule

@@ -1,6 +1,7 @@
 module output_partials #(
          parameter integer BANK_COUNT = 32,
-         parameter integer TILE_SIZE = 128
+         parameter integer TILE_SIZE = 128,
+         parameter integer DATA_WIDTH = 16
        ) (
          input wire clk,
          input wire reset_n,
@@ -10,10 +11,10 @@ module output_partials #(
          input wire neighbor_cts[8],
          output logic [$clog2(BANK_COUNT)-1:0] buffer_bank_read,
          output logic [$clog2(TILE_SIZE)-1:0] buffer_bank_entry,
-         input wire [7:0] buffer_data_read,
+         input wire [DATA_WIDTH-1:0] buffer_data_read,
 
          output logic exchange_done,
-         output logic[7:0] neighbor_output_value[8],
+         output logic[DATA_WIDTH-1:0] neighbor_output_value[8],
          output logic[$clog2(TILE_SIZE)-1:0] neighbor_output_row[8],
          output logic[$clog2(TILE_SIZE)-1:0] neighbor_output_column[8],
          output logic neighbor_output_write_enable[8]
@@ -39,7 +40,7 @@ logic [$clog2(TILE_SIZE)-1:0] next_column;
 logic next_process_outputs;
 logic next_exchange_done;
 
-logic[7:0] next_neighbor_output_value[8];
+logic[DATA_WIDTH-1:0] next_neighbor_output_value[8];
 logic[$clog2(TILE_SIZE)-1:0] next_neighbor_output_row[8];
 logic[$clog2(TILE_SIZE)-1:0] next_neighbor_output_column[8];
 logic next_neighbor_output_write_enable[8];

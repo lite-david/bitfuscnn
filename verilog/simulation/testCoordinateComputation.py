@@ -177,9 +177,6 @@ def test_4bit_8x8_coordinate_computation(dut):
         weightindices[1:], activationindices[1:], 3, 3, 8, 8
     )
     outputcoordinates = sw_coordinatecompute.getCoordinates()
-    print(outputcoordinates)
-    print(weightindices)
-    print(activationindices)
 
     tc = unittest.TestCase()
     clk = dut.coordinatecomputation.clk
@@ -202,13 +199,6 @@ def test_4bit_8x8_coordinate_computation(dut):
     clk <= 1
     yield Timer(100, units="ns")
     for i in range(64):
-        print(
-            "Checking {}, actually ({},{})".format(
-                outputcoordinates[i],
-                dut.coordinatecomputation.row_coordinate[i].value.integer,
-                dut.coordinatecomputation.column_coordinate[i].value.integer,
-            )
-        )
         if outputcoordinates[i][0] == -1:
             tc.assertEqual(int(dut.coordinatecomputation.row_coordinate[i]), 65535)
         else:
