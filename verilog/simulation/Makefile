@@ -19,7 +19,7 @@ TOPLEVEL=sim_top
 # MODULE is the name of the Python test file:
 MODULE=testCoordinateComputation,testBankRC,testAccumulatorBuffer,testAccumulatorBank,testAccumulatorBanks,testPPU,testFusionUnit,testCrossbar,testRamFIFO
 # MODULE=testRamFIFO
-# MODULE=testBitfuscnn
+MODULE=testBitfuscnn
 # MODULE=testAccumulatorBanks
 
 # SIM=verilator

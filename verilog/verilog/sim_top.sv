@@ -101,7 +101,7 @@ defparam accumulator_banks.BANK_COUNT = 16;
 
 fusion_unit fusion_unit();
 
-// bitfuscnn bitfuscnn();
+bitfuscnn bitfuscnn();
 
 ram_fifo ram_fifo();
 

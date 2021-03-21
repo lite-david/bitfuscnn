@@ -5,6 +5,7 @@ import numpy as np
 
 import ppu
 
+stall_count = 0
 
 def do_cycle(
     bufferbank,
@@ -19,6 +20,7 @@ def do_cycle(
     tile_size=32,
     bitwidth=0,
 ):
+    global stall_count
     coordinatecompute = CoordinateComputation(
         weight_indices, activation_indices, w_dim, a_dim, parallel, parallel
     )
@@ -28,12 +30,14 @@ def do_cycle(
     cycle = 0
     stall = 0
     outputcoordinates = coordinatecompute.getCoordinates()
+    
     while len(outputcoordinates) > 0 or stall > 0:
         if stall == 0:
             products = multiplierarray.multiply()
             stall = xbar.route(products, outputcoordinates, tile_size)
         else:
             stall = xbar.route(products, outputcoordinates, tile_size)
+            stall_count += 1
         if stall == 0:
             outputcoordinates = coordinatecompute.getCoordinates()
         cycle += 1
@@ -43,8 +47,8 @@ def do_cycle(
     return cycle
 
 
-def do_output_channel(weights, activations, parallel=4, banks=32, bitwidth=0):
-    bufferbank = BufferBankArray(banks, banks)
+def do_output_channel(weights, activations, parallel=4, banks=32, bank_width=32, bitwidth=0):
+    bufferbank = BufferBankArray(banks, bank_width)
     cycles = 0
     for weight, activation in zip(weights, activations):
         cweights, weightindices = utils.compress(weight)
@@ -166,8 +170,9 @@ def expected_convolve(weights, activations):
     return conv_so_far
 
 
-def do_test(parallel, bitwidth, density):
-    BANKS = 256
+def do_test(parallel, bitwidth, density, aspect_ratio):
+    BANKS = int(256 * aspect_ratio)
+    BANK_WIDTH = 256*256//BANKS+1
     KERNEL_SIZE = 3
     # scale = 8
     # density = 0.1
@@ -184,6 +189,7 @@ def do_test(parallel, bitwidth, density):
         banks=BANKS,
         parallel=parallel,
         bitwidth=bitwidth,
+        bank_width=BANK_WIDTH
     )
     # next cycle
 
@@ -195,7 +201,7 @@ def do_test(parallel, bitwidth, density):
     activations = generate_data(SIZE, SIZE, CHANNELS, p_zero=density)
 
     bufferbank, cycles_c2 = do_output_channel(
-        weights, activations, parallel=parallel, bitwidth=bitwidth, banks=BANKS
+        weights, activations, parallel=parallel, bitwidth=bitwidth, banks=BANKS, bank_width=BANK_WIDTH
     )
     # next cycle
 
@@ -266,13 +272,13 @@ def do_test(parallel, bitwidth, density):
     return True, total, cycles_c + cycles_c2, cycles_p + cycles_p2
 
 
-def do_experiment(bitwidth, parallel, sparsity):
+def do_experiment(bitwidth, parallel, sparsity, aspect_ratio=1):
     cycle_counts = []
     cycle_conv = []
     cycle_ppu = []
-    print("bitwidth parallel sparsity,{},{},{}".format(bitwidth, parallel, sparsity))
+    print("bitwidth parallel sparsity aspect_ratio,{},{},{},{}".format(bitwidth, parallel, sparsity, aspect_ratio))
     for i in range(10):
-        passed, cycles, conv, ppu_cycles = do_test(parallel, bitwidth, sparsity)
+        passed, cycles, conv, ppu_cycles = do_test(parallel, bitwidth, sparsity, aspect_ratio)
         cycle_counts.append(cycles)
         cycle_conv.append(conv)
         cycle_ppu.append(ppu_cycles)
@@ -293,19 +299,26 @@ def do_experiment(bitwidth, parallel, sparsity):
     # )
     # print("{} cycles in conv, {} cycles in ppu".format(mean_conv, mean_ppu))
 
-print("density, stage 1, stage 2, stage 3, total, conv 1, conv 2, ppu 1, ppu 2")
-BITWIDTH = 0
-PARALLEL = 16
-SPARSITY = 0.7
-do_experiment(BITWIDTH, PARALLEL, SPARSITY)
+def main():
+    print("density, stage 1, stage 2, stage 3, total, conv 1, conv 2, ppu 1, ppu 2")
+    BITWIDTH = 0
+    PARALLEL = 16
+    SPARSITY = 0.7
+    # do_experiment(BITWIDTH, PARALLEL, SPARSITY)
 
-BITWIDTH = 1
-PARALLEL = 8
-do_experiment(BITWIDTH, PARALLEL, SPARSITY)
+    BITWIDTH = 0
+    PARALLEL = 16
+    SPARSITY = 0.7
+    do_experiment(BITWIDTH, PARALLEL, SPARSITY, 1/4)
+    print(stall_count)
 
-BITWIDTH = 2
-PARALLEL = 4
-do_experiment(BITWIDTH, PARALLEL, SPARSITY)
+# BITWIDTH = 1
+# PARALLEL = 8
+# do_experiment(BITWIDTH, PARALLEL, SPARSITY)
+
+# BITWIDTH = 2
+# PARALLEL = 4
+# do_experiment(BITWIDTH, PARALLEL, SPARSITY)
 
 # cweights, weightindices = utils.compress(weights)
 # cactivations, activationindices = utils.compress(activations)
@@ -329,3 +342,7 @@ do_experiment(BITWIDTH, PARALLEL, SPARSITY)
 #     print(string)
 # print(cycles)
 # print(conv_so_far)
+
+
+if __name__ == "__main__":
+    main()
