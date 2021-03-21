@@ -1,21 +1,22 @@
 module neighbor_input_processor
        #(parameter integer BANK_COUNT = 32,
-         parameter integer TILE_SIZE = 128)(
+         parameter integer TILE_SIZE = 128,
+         parameter integer DATA_WIDTH = 16)(
          input clk, reset_n,
          input wire[1:0] bitwidth,
-         input wire[7:0] neighbor_input_value[8],
+         input wire[DATA_WIDTH-1:0] neighbor_input_value[8],
          input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_row[8],
          input wire[$clog2(TILE_SIZE)-1:0] neighbor_input_column[8],
          input wire [7:0]neighbor_input_write_enable,
 
          output logic [$clog2(TILE_SIZE)-1:0] buffer_row_write[BANK_COUNT],
          output logic [$clog2(TILE_SIZE)-1:0] buffer_column_write[BANK_COUNT],
-         output logic [7:0] buffer_data_write[BANK_COUNT],
+         output logic [DATA_WIDTH-1:0] buffer_data_write[BANK_COUNT],
          output logic buffer_write_enable[BANK_COUNT],
          output logic leftover_inputs
        );
 
-logic[7:0] proc_neighbor_input_value[8];
+logic[DATA_WIDTH-1:0] proc_neighbor_input_value[8];
 logic[$clog2(TILE_SIZE)-1:0] proc_neighbor_input_row[8];
 logic[$clog2(TILE_SIZE)-1:0] proc_neighbor_input_column[8];
 logic [7:0]proc_neighbor_input_write_enable;
@@ -24,7 +25,7 @@ logic [7:0]next_neighbor_input_write_enable;
 
 logic [$clog2(TILE_SIZE)-1:0] next_buffer_row_write[BANK_COUNT];
 logic [$clog2(TILE_SIZE)-1:0] next_buffer_column_write[BANK_COUNT];
-logic [7:0] next_buffer_data_write[BANK_COUNT];
+logic [DATA_WIDTH-1:0] next_buffer_data_write[BANK_COUNT];
 logic next_buffer_write_enable[BANK_COUNT];
 
 integer i;
@@ -87,7 +88,7 @@ function logic [$clog2(BANK_COUNT)-1:0] bank_from_rc(
 
 endfunction
 
-logic[7:0] select_neighbor_input_value[8];
+logic[DATA_WIDTH-1:0] select_neighbor_input_value[8];
 logic[$clog2(TILE_SIZE)-1:0] select_neighbor_input_row[8];
 logic[$clog2(TILE_SIZE)-1:0] select_neighbor_input_column[8];
 logic select_neighbor_input_write_enable[8];

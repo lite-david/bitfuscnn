@@ -97,10 +97,12 @@ accumulator_bank accumulator_bank();
 
 accumulator_banks accumulator_banks();
 
-defparam accumulator_banks.BANK_COUNT = 10;
+defparam accumulator_banks.BANK_COUNT = 16;
 
 fusion_unit fusion_unit();
 
 bitfuscnn bitfuscnn();
+
+ram_fifo ram_fifo();
 
 endmodule

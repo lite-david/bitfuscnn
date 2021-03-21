@@ -11,8 +11,8 @@ module crossbar
     input wire[63:0] products[16],
     
     //Inputs from coordinate computation
-    input wire[7:0] row_coordinate[TILE_SIZE],
-    input wire[7:0] column_coordinate[TILE_SIZE],
+    input wire[$clog2(TILE_SIZE)-1:0] row_coordinate[TILE_SIZE],
+    input wire[$clog2(TILE_SIZE)-1:0] column_coordinate[TILE_SIZE],
     
     //Buffer bank interface
     output logic [$clog2(TILE_SIZE)-1:0] buffer_row_write[BANK_COUNT],
