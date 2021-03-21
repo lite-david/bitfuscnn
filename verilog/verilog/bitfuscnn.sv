@@ -1,6 +1,6 @@
 module bitfuscnn
   #(parameter integer RAM_WIDTH = 14,
-    parameter integer BANK_COUNT = 16,
+    parameter integer BANK_COUNT = 64,
     parameter integer TILE_SIZE = 256,
     parameter integer BUFFER_WIDTH = TILE_SIZE*TILE_SIZE/BANK_COUNT,
     parameter integer INDEX_WIDTH = 4,
